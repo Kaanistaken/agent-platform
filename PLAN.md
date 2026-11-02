@@ -97,7 +97,7 @@ options and their trade-offs → the author decides → the batch is sent to
 | B1 | Stack and foundations | ~~backend language~~ (D5); ~~database and driver~~ (D6); ~~UI approach~~ (D7); ~~second model provider~~ (D8); ~~agent layer~~ (D9) | Closed; reviewed (`docs/reviews/2026-11-02-B1/`) |
 | B2 | Data model, identity and secrets | (entities, schema and API shape moved to B2b); login and seeded users (no committed passwords); model-key encryption algorithm and master-key source (D12); how development keys in `.env` reach the platform; tool secret storage and injection; which conversation, call, event and configuration snapshots survive approval/restart; ownership checks and concurrent approval updates | Closed; reviewed (`docs/reviews/2026-11-02-B2/`) |
 | B2b | Schema and API | `docs/schema.md` (D37–D57) | Closed; reviewed (`docs/reviews/2026-11-02-B2b/`) |
-| B3 | Run execution | agent loop and limits (steps, timeouts, output size); tool templating and validation, destination/redirect rules (D11); live streaming protocol (SSE or WebSocket), through Next.js or directly to Go, stream authentication, reconnect; run lifecycle and final states; behaviour when the page is closed; recovery after restart and runs found active after restart; approval flow, rejected approvals; error classes, retry owner, deadlines and limits (D10); side-effecting tool call with ambiguous outcome; OpenAI API surface (Responses or Chat Completions) and supported models; multiple tool calls per turn; malformed arguments and truncation; usage accounting for interrupted streams; SQLite connection/writer pattern, WAL, busy timeout | Part 1 decided (D59–D72); part 2 open |
+| B3 | Run execution | **Part 1 decided (D59–D72):** workers with leases, statuses, page close, restart recovery, unknown outcomes, one tool call per turn, approval wait, rejection, cancellation, SSE, Next.js proxy, event delivery, delta batching, session check on streams. **Part 2 open:** OpenAI API surface (Responses or Chat Completions) and supported models; error classes, retry owner (SDK built-in retries vs ours) and backoff (D10; note OpenAI returns HTTP 429 also for `insufficient_quota`); deadlines for model calls, tool calls and whole runs; step limit, invalid-call allowance, tool response size limit; HTTP destination and redirect rules, host normalisation, final secret-host check, template escaping (D11, D32); usage recording for interrupted streams and per provider attempt; SQLite connection/writer pattern, WAL, busy timeout, FK enforcement per connection; how a replacement secret is bound to an invalidated call (D55); model-key replacement or deletion during a paused run. **Then:** Codex review of all of B3. | Part 1 decided; part 2 open |
 | B4 | Example agent and verification | which example agent; its two real tools and authorised test target; testing approach, adapter fixtures, restart/concurrency tests; what proves both providers work; recorded run under `examples/`; screen-recording script | Open |
 | B5 | Scope, schedule and process | which nice-to-haves (if any); day-by-day schedule including time for one full end-to-end integration; toolchain/dependency versions and supported OSes; when cold setup is measured; branch and merge flow; language of README, AI_USAGE and code comments (commits: D36) | Open |
 
@@ -129,5 +129,20 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-Batch B3 (run execution): the agent presents the options, including the B3 items
-collected from the B1, B2 and B2b reviews; the author decides; then review with `gpt-6.1-sol`.
+Stopped on 2026-11-02 after committing `12babd3` (pushed). To resume:
+
+1. Read `AGENTS.md` (protocol: the author decides, the agent implements), this
+   file, `docs/schema.md` and `AI_USAGE.md`.
+2. **B3 part 2**: the agent presents options (with a recommendation per point,
+   as in part 1) for the "Part 2 open" items in the B3 row above. The author
+   decides; decisions are recorded as the author's own (not as accepted AI
+   proposals, see `AI_USAGE.md`).
+3. Send the whole of B3 (D59 onwards) to Codex `gpt-6.1-sol`, effort `high`,
+   prompt and answer under `docs/reviews/<date>-B3/`; summarise findings; the
+   author accepts or rejects each; record in `PLAN.md` and `AI_USAGE.md`.
+4. Then B4 (example agent and verification), then B5 (scope, schedule, process).
+   No code has been written yet.
+
+Pending author inputs: deadline and budget cap (top of this file); keys go in
+the git-ignored `.env` (`DEV_OPENAI_API_KEY`, `DEV_ANTHROPIC_API_KEY`) for the
+author's own use and are entered through the UI (D18).
