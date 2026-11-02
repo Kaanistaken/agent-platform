@@ -1,0 +1,5 @@
+# Local secrets — never commit (case rule: no keys or passwords, including in history)
+.env
+
+# Raw Codex session transcripts; only prompt.md and answer.md are kept
+docs/reviews/**/codex-run.log
