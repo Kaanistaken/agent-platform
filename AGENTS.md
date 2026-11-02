@@ -12,8 +12,16 @@ arayüzün görünüşü puanlanmaz. **Önceliklendirme de değerlendirmenin par
 çekirdek, her şeyi mükemmelleştirmekten önce gelir. Yetişmeyen ve bilerek
 dışarıda bırakılan her şey gerekçesiyle `DESIGN.md`'ye yazılır.
 
-- Süre: 7 gün. Başlangıç 2026-11-02 varsayıldı (repo oluşturma tarihi; kesin
-  teslim tarihi kullanıcıdan gelirse `PLAN.md`'ye yazılır).
+**Kritik karar — önce çekirdek (kullanıcı, 2026-11-02, `PLAN.md` D84).** Ana
+öncelik sistemin çekirdeğini (R1–R8 + örnek agent) çalışır hâle getirmektir.
+Nice-to-have'ler şimdilik yapılmaz; bir gereksinimin veya kayıtlı bir kararın
+gerektirmediği hiçbir şey eklenmez (overengineering yok). Örneğin backend tek
+süreçtir; lease, takeover ve çoklu replika yoktur. Bir iş bu kurala takılırsa
+agent eklemeden önce sorar.
+
+- Süre: 7 gün. Başlangıç 2026-11-02, teslim **2026-11-09** (kullanıcı, 2026-11-02).
+- Model çağrıları için bütçe tavanı şimdilik **5 USD**; yetmezse kullanıcı yeniden
+  karar verir, agent tavanı kendiliğinden aşmaz (2026-11-02).
 - Kaynak: `AI-Platform-Engineer-Case-EN.pdf` (kullanıcıda; repoya kopyalanmaz).
   Gereksinimlerin özeti aşağıdadır; çelişkide PDF geçerlidir.
 
@@ -39,6 +47,11 @@ politikaları; provider ve model; örnek agent; test yaklaşımı; dal/commit ak
 - Yalnız kararın içindeki uygulama ayrıntısı agent'a kalır: yerel adlandırma, bir
   fonksiyonun iç düzeni gibi arayüz, bağımlılık, şema veya davranış
   değiştirmeyen şeyler. Bir ayrıntının karar olup olmadığından emin değilse sorar.
+- **Süre sınırlarının değerleri agent'a bırakıldı** (kullanıcı, 2026-11-02,
+  `PLAN.md` D85): timeout, backoff, bekleme ve sona erme süreleri gibi değerler
+  sorulmadan belirlenir. Değer normal kullanımda asla takılmayacak, ama kötüye
+  kullanımı sınırlayacak bir noktada seçilir ve `PLAN.md`'ye yazılır. Kural ve
+  davranış (ne olacağı) yine kullanıcının kararıdır.
 - Kullanıcının bir kararı gereksinim ihlali, güvenlik açığı veya hata
   doğuracaksa bunu açıkça ve somut örnekle söyler. Kullanıcı kararında ısrar
   ederse karar uygulanır ve risk kayda geçer; sessizce "düzeltme" yapılmaz.
@@ -115,21 +128,35 @@ Asıl kayıt `PLAN.md` → "Kararlar" bölümüdür; burada yalnız özet durur.
   başına sahiplik + takım içi paylaşım. Ayrıntı `PLAN.md`.
 - Plan kararları batch'ler hâlinde Codex `gpt-6.1-sol`'a danışılır; istem ve
   cevaplar repoda `docs/reviews/` altında tutulur (2026-11-02). Yöntem aşağıda.
+- B3 bölüm 1 (D59–D72): lease'li background worker'lar; sayfa kapanınca koşu
+  sürer; restart sonrası kaldığı yerden devam; sonucu bilinmeyen yan etkili çağrı
+  `outcome_unknown` olur ve yeniden denenmez; turda tek tool çağrısı; onay
+  süresiz bekler; iptal (başlatan + lead); canlı akış **SSE**, Next.js proxy
+  arkasında; ret sonrası model yeni tool çağrısı yapmak zorunda.
+- B3 bölüm 2 (D73–D83): OpenAI **Responses API** (`store: false`); modeller `gpt-6-luna`,
+  `gpt-6-sol`, `claude-haiku-5-5`, `claude-sonnet-5-5`; süre sınırları geniş
+  (model 10 dk/deneme, tool 2 dk, koşu 1 saat aktif); yarıda kalan çağrıların da
+  token kaydı; retry bizim adapter'da, SDK retry kapalı; 20 adım, art arda 3
+  hatalı çağrı; yalnız https, iç adres yok, redirect takip yok; SQLite WAL + tek
+  yazıcı; yedek sır normal yolla bağlanır; bekleyen koşuda model anahtarı
+  değişirse onay geçersiz olur ve sebebi gösterilir. Ayrıntı `PLAN.md`.
+- B3 Codex danışması sonrası (D84–D96): önce çekirdek ve tek backend süreci;
+  süre değerleri agent'ta; `approved` durumu; yedek sır ad + host ile eşleşir;
+  `Retry-After` 60 sn'ye kadar; ret sonrası zorunlu tool çağrısı yok; onay 24 saat
+  (cumaysa 72 saat) bekler, sonra koşu `cancelled`; küçük şablon grameri; çağrı
+  başına 4096 çıktı tokenı (teslimden önce gözden geçirilir); provider'ın ham
+  mesaj içeriği saklanır ve aynen geri gönderilir. İptal çekirdekte kalır (D97);
+  event'ler için veritabanı polling'i yok, yalnız süreç içi bildirim ve replay (D98).
+- Teslim 2026-11-09, bütçe tavanı şimdilik 5 USD (yukarıda).
 
 **Açık (kullanıcı kararı bekliyor).** Parantez içindekiler PDF'teki kısıtlar veya
 agent'ın notlarıdır; karar değildir:
 
-- Canlı akış protokolü: SSE mi, WebSocket mi.
-- Retry/backoff, timeout, adım sınırı ve tool cevabı boyut limiti politikaları.
-- Kullanıcı sayfayı kapatınca koşunun ne olacağı (devam mı, iptal mi; her iki
-  durumda da R4 son durum istiyor).
-- Yan etkili tool çağrısı timeout'a düşerse ne yapılacağı.
 - Örnek agent (PDF fikirleri: issue triage, dependency check, release notes).
-- Hangi nice-to-have'lerin yapılacağı.
+- Nice-to-have'ler: şimdilik yok (D84); ileride kullanıcı karar verir.
 - Dal ve merge akışı.
 - Değerlendiriciye görünen diğer metinlerin dili (README, AI_USAGE, kod yorumları; commit mesajları İngilizce — D36).
 - Push öncesi kod incelemesi yapılıp yapılmayacağı (plan danışması karara bağlandı, kod incelemesi değil).
-- Bütçe tavanı (verilirse `PLAN.md`'ye yazılır ve aşılmaz).
 
 Bir açık karar verilince bu listeden "verilmiş"e taşınır ve `PLAN.md`'ye kaydedilir.
 Açık kararların hangi batch'te ele alınacağı `PLAN.md` → "Planning batches"te.

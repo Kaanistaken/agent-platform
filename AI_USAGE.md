@@ -28,12 +28,19 @@ added as the work happens.
 | 2026-11-02 | Claude Code | Pointed out that the author's per-user-secret idea alone still lets a tool owner send a user's own secret to a host the owner chooses. | **Accepted**; host binding added (D32). |
 | 2026-11-02 | Codex (B2b) | Review of the schema/API draft: consistency fixes (provisional B3 items, separate secret-reference validation, response allowlists, masking on every output path, no cascading deletes, per-endpoint authorization), plus 17 points needing decisions (database-level team consistency, invalid-call recording, approval revisions, deleted-tool confirmation contract, and others). | **Accepted.** Claude Code proposed an option for each decision point; the author accepted all of them (D45–D57). |
 | 2026-11-02 | Claude Code | Recommended removing `cloned_from_id` and the redundant attribution columns on `model_calls`, which Claude Code itself had put in the first schema draft. | **Accepted** (D47). |
+| 2026-11-02 | Codex (B3) | Contradictions in B3: no state between approval and dispatch; secret replacement by host alone is ambiguous; retry wait rules conflict; forced tool use fails on `claude-sonnet-5-5` (Claude Code verified this in Anthropic's documentation); indefinite approval waits break R4; HEAD inconsistency; D83's rationale too broad. | **Accepted.** Fixed with the author's choices: `approved` status, name + host matching, `Retry-After` up to 60 s, no forced tool call, approval expiry of 24 h (72 h from Friday), HEAD removed, rationale narrowed (D83, D86–D91). |
+| 2026-11-02 | Codex (B3) | Run a single backend process instead of leases, takeover and multiple replicas. | **Accepted**, and widened by the author into a "core first, no over-engineering" rule (D84). |
+| 2026-11-02 | Codex (B3) | Fail a run when a stream breaks after output has started, instead of retrying it. | **Rejected** on Claude Code's recommendation: the discard marker is needed anyway for calls repeated after a restart (D92). |
+| 2026-11-02 | Codex (B3) | Small template grammar; group of clarifications (atomic final transition and checkpoints, persisted counters, extended error classes, SSRF details, response truncation and masking order, SSE replay, SQLite start-up checks); output-token cap for the budget; keep provider-specific message content for replay. | **Accepted** (D93–D96). Claude Code verified the thinking-block requirement in Anthropic's documentation. The author added that budget-motivated limits are reviewed before delivery (D95). |
+| 2026-11-02 | Claude Code | Claimed in the B3 part 2 proposal that `store: false` means "no second copy at OpenAI". | **Corrected** after Codex's review: it only disables stored response state; OpenAI's abuse-monitoring retention is separate (D83). |
 
 ## Notes on decisions
 
 | Date | Batch | Note |
 | --- | --- | --- |
 | 2026-11-02 | B3 part 1 | Claude Code listed options for 14 points (D59–D72). The decisions are the author's own; the author changed the cancellation option (lead may also cancel, with an "Are you sure?" confirmation) gave their own reason for single tool calls per turn, and chose that after a rejection the model must propose a new call. |
+| 2026-11-02 | B3 part 2 | Claude Code listed options with recommendations. The author chose the Responses API and the models without a recommendation, set generous deadlines and the 10 MB / 128 KB response limits, and later left the values of time limits to Claude Code (D85). Model IDs for OpenAI were found by Claude Code in third-party listings and are to be verified against the provider before use (D78). |
+| 2026-11-02 | B3 review | The approval expiry rule (24 h, 72 h from Friday) is the author's own; Claude Code extended it to Saturday and Sunday under D85 (D90). |
 
 ## Accepted AI-proposed options
 
