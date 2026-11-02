@@ -112,6 +112,7 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D96 | 2026-11-02 | Each assistant message also stores the provider's raw content (opaque JSON) and sends it back verbatim on the next turn; the normalised fields stay for listing and display (amends D20). (After Codex B3 review) | Anthropic requires thinking blocks with their signatures to be sent back unchanged (verified in Anthropic's error documentation); OpenAI reasoning items need the same. Losing them causes HTTP 400. |
 | D97 | 2026-11-02 | Cancellation (D66) stays in the core despite D84. In one process it is a context cancellation plus one endpoint. (After Codex B3 review) | The author's choice; cheap with one process. |
 | D98 | 2026-11-02 | The short-interval database poll of D69 is removed: events are written to `run_events` first and delivered by in-process notification; a reconnecting browser gets the missed events by replay from the database (amends D69). (After Codex B3 review) | With one process (D84) there is no other replica whose events a poll would pick up. |
+| D99 | 2026-11-02 | `docs/schema.md` updated for B3 and ratified, including these implementation choices: (1) a call to a tool without approval is created as `approved`, so every call goes through the same `approved` → `executing` claim; (2) no model-key generation column: replacing or deleting a model key updates the affected calls in the same transaction; (3) adding a replacement secret replaces the deleted secret's ID in the run snapshot (the only later snapshot change); (4) a tool call is `succeeded` when any HTTP response arrived (also 4xx/5xx, which go to the model), `failed` only when nothing was sent or a `GET` failed after its retry; (5) cancelling a finished run returns `409`; (6) approval expiry is set once and not reset by invalidation (D85). | One path for all calls; with one process and one writer, a version column adds nothing. |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -161,16 +162,12 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-Stopped on 2026-11-02; B3 closed (D59–D98). To resume:
+Stopped on 2026-11-02; B3 closed (D59–D99). To resume:
 
 1. Read `AGENTS.md` (protocol: the author decides, the agent implements; core
    first, D84), this file, `docs/schema.md` and `AI_USAGE.md`.
-2. Update `docs/schema.md` for B3: `approved` status (D86), raw provider content
-   on messages (D96), one `model_calls` row per attempt with outcome (D75, D94),
-   approval expiry (D90), persisted counters and active time (D94), model-key
-   generation for D77/D94, final-event and failure-reason codes, SSE replay and
-   cancel endpoints (no longer provisional).
-3. Then B4 (example agent and verification), then B5 (scope, schedule, process),
+2. `docs/schema.md` is updated for B3 (D99).
+3. B4 (example agent and verification), then B5 (scope, schedule, process),
    kept short under D84. No code has been written yet.
 
 Deadline 2026-11-09; budget cap USD 5 (top of this file). Keys go in the
