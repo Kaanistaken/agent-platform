@@ -209,6 +209,7 @@ işaretli dosyalar henüz yoktur; oluşturulunca işaret kaldırılır.
 | Kullanıcının kararları, planlama batch'leri, gereksinim durumu (R1–R8, EA, teslimatlar), sıradaki iş, engeller | `PLAN.md` |
 | Kurulum, çalıştırma, provider/model, örnek agent, varsayımlar | `README.md` (planlanan) |
 | Mimari, kararlar/alternatifler, dışarıda bırakılanlar, güvenlik riskleri, ölçek | `DESIGN.md` (≤2 sayfa; yalnız `PLAN.md`'deki kararlardan derlenir) |
+| Tablo şeması ve REST API | `docs/schema.md` (D37) |
 | Codex danışmalarının istem ve cevapları | `docs/reviews/<YYYY-MM-DD>-<batch>/` (`prompt.md`, `answer.md`; ham `codex-run.log` git-ignored) |
 | AI araç kullanımı, reddedilen/düzeltilen öneriler | `AI_USAGE.md` |
 | Yerel geliştirme sırları | `.env` (git-ignored; değişken adları SDK'ların otomatik okuduğu adlardan bilerek farklı) |
