@@ -11,7 +11,7 @@ added as the work happens.
 
 | Tool | Model | Used for |
 | --- | --- | --- |
-| Claude Code | Claude Opus 5.5 | Adapting the agent working protocol (`AGENTS.md`, `CLAUDE.md`); laying out options and trade-offs for each planning batch; drafting `PLAN.md`, `DESIGN.md` and this file from the author's decisions; implementation (later). |
+| Claude Code | Claude Opus 5.5 | Adapting the agent working protocol (`AGENTS.md`, `CLAUDE.md`); laying out options and trade-offs for each planning batch; drafting `PLAN.md`, `DESIGN.md` and this file from the author's decisions; writing the implementation (backend, UI, tests, example agent, README) from the recorded decisions (from 2026-11-04). |
 | Codex CLI | `gpt-6.1-sol` (reasoning effort `high`) | Read-only review of planning decisions, batch by batch. Prompts and answers: `docs/reviews/`. |
 
 ## Rejected or corrected suggestions

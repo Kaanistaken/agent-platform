@@ -1,0 +1,12 @@
+{
+  "name": "vodafone-case-sandbox",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test input for the dependency-check example agent. Pinned old versions with known advisories; nothing here is installed.",
+  "dependencies": {
+    "lodash": "4.17.15",
+    "minimist": "1.2.0",
+    "jsonwebtoken": "8.5.1",
+    "ms": "2.0.0"
+  }
+}

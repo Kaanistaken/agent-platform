@@ -136,6 +136,7 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D120 | 2026-11-04 | Codex review costs are not counted in the USD 5 model budget (D118 covers only the platform's own live model calls). (B5 review) | Author's decision. |
 | D121 | 2026-11-04 | The author leaves the **folder and package layout** to the agent, following common practice. The agent's layout: `backend/` (Go module; `cmd/server` entry point; `internal/` packages: `config`, `db` with migrations, `crypto`, `auth`, `store`, `api` (HTTP handlers and SSE), `run` (agent loop and workers), `provider` (`openai`, `anthropic`, scripted fake), `tool` (templates and the guarded HTTP client)); `web/` (Next.js App Router, TypeScript); `examples/`; `docs/`. (B5 review) | Author's instruction. Standard Go `cmd`/`internal` layout; one package per concern keeps each part explainable. |
 | D122 | 2026-11-04 | The author left the remaining Codex B5 review points to the agent; the agent's choices: (1) one live OpenAI validation run on Nov 5, counted in D118; (2) the D95 limit review happens on Nov 8 before the setup measurement; (3) each review round's own `prompt.md`/`answer.md` are not re-reviewed — the author checks them for secrets and accuracy — while code fixes are always reviewed (D117); (4) `.gitattributes` with `* text=auto eol=lf`; (5) cost is estimated from recorded tokens (labelled as an estimate) and checked against the provider dashboards; no cost fields in the schema; spend is written here after each live session; (6) the clarifications are adopted: per-day exit criteria and the Nov 5 work order from the Codex B5 answer, security protections built with the slice that uses them, tests written with each slice, a recording rehearsal on Nov 7–8, model IDs verified through the model-list endpoints, the review prompt format, and the clean-setup checklist. (B5 review) | Author's delegation; the choices follow the Codex B5 review. |
+| D123 | 2026-11-04 | Implementation choices made by the agent under D85, D119 and D121 (recorded, not the author's decisions). **Dependencies** (backend): `modernc.org/sqlite` v1.61.1 (D6), `github.com/openai/openai-go/v3` v3.94.0 and `github.com/anthropics/anthropic-sdk-go` v1.84.0 (D9; used for transport, errors and stream parsing only; request bodies set with `option.WithJSONSet` so provider items are sent back verbatim, D96), `golang.org/x/crypto` (bcrypt, D16), `github.com/joho/godotenv` v1.5.1 (`.env` loading), `github.com/santhosh-tekuri/jsonschema/v6` v6.0.3 (tool parameter schemas, R3). No HTTP framework: Go's `net/http` router. **UI**: `next` 16.4.5, `react`/`react-dom` 19.3.1, `typescript` 5.9.3 (not 7.x: Next.js type checking targets 5.x), no CSS or UI library. **Toolchain**: `go 1.26.0` + `toolchain go1.26.4`; `web/.nvmrc` 24.18.0; `package-lock.json` with `npm ci`. **Ports and commands**: Go API on `127.0.0.1:8080`, Next.js on `3000` (`BACKEND_URL` overrides the target); `go run ./cmd/initenv` (writes missing `.env` values), `go run ./cmd/server`, `go run ./cmd/example` (defines the example agent through the API), `go test ./...`, `npm ci && npm run build && npm start`. **Values (D85)**: session 12 h; SSE heartbeat 15 s (D71); 4 run workers; approval-expiry sweep every minute; tool connect timeout 30 s and TLS handshake 15 s inside the 2 min call limit; request body limit 1 MB; task and system prompt at most 20,000 characters; rejection note at most 2,000 characters; secret values at most 4,096 bytes. **Behaviour details**: a provider 401 message is replaced by a generic text because providers quote part of the key (R7); Next.js compression is off so SSE is not buffered (D68). | Delegated by the author (D85, D119, D121). |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -155,25 +156,25 @@ options and their trade-offs → the author decides → the batch is sent to
 
 | # | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
-| R1 | Agents are data | Not started | |
-| R2 | Tools are HTTP request templates | Not started | |
-| R3 | Agent loop handles failure | Not started | |
-| R4 | Runs stream live and always end in a final state | Not started | |
-| R5 | Risky steps wait for approval; pending approval survives restart | Not started | |
-| R6 | Teams are isolated (server-enforced) | Not started | |
-| R7 | Each user brings their own model key | Not started | |
-| R8 | Provider-agnostic and metered | Not started | |
-| EA | Example agent, end to end | Not started | |
+| R1 | Agents are data | Implemented | `api/definitions.go`; example agent created through the API (`cmd/example`); `api_test.go` |
+| R2 | Tools are HTTP request templates | Implemented | `tool/template.go`, `tool/client.go`; `tool_test.go` (grammar, escaping, secrets only at send time, masking, host binding) |
+| R3 | Agent loop handles failure | Implemented | `run/model.go`; `TestLoopValidationAndLimits` |
+| R4 | Runs stream live and always end in a final state | Implemented; SSE through the Next.js proxy checked manually in production mode (dev mode not yet) | `run/`, `api/runs.go`; `TestTerminalStatesAndCancellation`, `TestEventStreamReplay` |
+| R5 | Risky steps wait for approval; pending approval survives restart | Implemented | `run/approvals.go`, `run/invalidate.go`; `TestApprovalPersistsAndDispatchesOnce`, `TestApprovalRacesAndCredentialChanges`, `TestInterruptedWriteOutcomeUnknown`, `TestApprovalExpiry` |
+| R6 | Teams are isolated (server-enforced) | Implemented | handlers scope every query by the session's team; composite keys (D46); `TestTeamAndUsageAuthorization` |
+| R7 | Each user brings their own model key | Implemented | `crypto/`, `api/auth.go`; `crypto_test.go`, adapter tests (environment keys ignored) |
+| R8 | Provider-agnostic and metered | Implemented; **not yet verified against the real providers** | `provider/openai`, `provider/anthropic` fixture tests; `model_calls`; `GET /api/usage` |
+| EA | Example agent, end to end | Defined (`examples/dependency-check/`); **live run pending** (author's keys, sandbox repository and token) | |
 
 ## Deliverables
 
 | Deliverable | Status |
 | --- | --- |
 | Git history | In progress |
-| `README.md` | Not started |
+| `README.md` | Draft; setup time not yet measured (D114) |
 | `DESIGN.md` (≤ 2 pages) | Skeleton |
 | `AI_USAGE.md` | Started; updated as the work happens |
-| Tests (agent loop, tool templates, team permissions, approval flow) | Not started |
+| Tests (agent loop, tool templates, team permissions, approval flow) | Written and passing (`cd backend; go test ./...`) |
 | Recorded run under `examples/` | Not started |
 | Screen recording (≤ 5 min, includes approval) | Not started |
 
@@ -185,24 +186,28 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-B3 closed on 2026-11-02 (commit `6781c55`, pushed). B4 closed on 2026-11-04
-(D100–D110, Codex review in `docs/reviews/2026-11-04-B4/`; `docs/schema.md`
-updated for D106). No code has been written yet.
+State on 2026-11-04 (evening): all planning batches are closed (D1–D123). The
+first implementation is written but **not committed**: backend (`backend/`),
+UI (`web/`), example agent (`examples/dependency-check/`), `README.md`.
+`go test ./...` passes (api, auth, crypto, provider/openai,
+provider/anthropic, run, tool); `npm run build` passes; the SSE stream through
+the Next.js proxy was checked by hand in production mode (events immediate,
+heartbeat after 15 s). No live model call has been made: `DEV_OPENAI_API_KEY`
+and `DEV_ANTHROPIC_API_KEY` in `.env` are empty, so the D78 model-ID check
+returned 401.
 
 To resume:
 
-1. Read `AGENTS.md` (the author decides, the agent implements; core first,
-   D84; time-limit values are the agent's, D85), this file, `docs/schema.md`
-   and `AI_USAGE.md`.
-2. B5 closed on 2026-11-04 (D111–D122, Codex review in
-   `docs/reviews/2026-11-04-B5/`). All planning batches are closed.
-3. Start coding: the Nov 5 slice (D112) in the order of D122 (6). Record each
-   dependency, version, port and command in this file (D119). Before every
-   push: Codex code review (D117). Time is short (deadline 2026-11-09): coding should start by
-   2026-11-05.
-4. External action for the author (D107): create the public repository
-   `vodafone-case-sandbox` with the D108 `package.json`, and a fine-grained
-   token limited to it (Issues read/write).
+1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`.
+2. Author: commit the implementation (D115), then the Codex code review before
+   the push (D117).
+3. Author's external actions: create `vodafone-case-sandbox` (public) with
+   `examples/dependency-check/package.json` at its root and a fine-grained
+   token (D107); enter the OpenAI key in the UI (D18).
+4. Live validation (D122): verify the model IDs (D78), one OpenAI run of the
+   read-only agent, then the full run with approval and a real issue (D110).
+5. Then (D112): SSE check in dev mode, Anthropic live run, `DESIGN.md`,
+   `examples/` recorded run, D95 limit review, clean-clone setup timing.
 
 Deadline 2026-11-09; budget cap USD 5 (top of this file). Keys go in the
 git-ignored `.env` (`DEV_OPENAI_API_KEY`, `DEV_ANTHROPIC_API_KEY`) for the

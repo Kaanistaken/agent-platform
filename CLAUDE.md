@@ -27,4 +27,4 @@ devam edebilmek esastır; kritik bilgiyi yalnız sohbette bırakma.
 **Teknik kararları kullanıcı verir; Claude uygular.** Kayıtlı bir karara
 dayanmayan seçim çıkarsa koda başlamadan sor (bkz. `AGENTS.md` → "Rol").
 
-Yerel doğrulama komutu: dil kararı verildikten sonra buraya yazılacak.
+Yerel doğrulama komutu: `cd backend; go test ./...` ve UI için `cd web; npm run build`.

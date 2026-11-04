@@ -165,6 +165,7 @@ never from the request (D45).
 | `POST /login` | anyone | returns no hashes; `Origin` checked |
 | `POST /logout` | session | deletes only the current session |
 | `GET /me` | session | id, username, team, role |
+| `GET /models` | session | the supported models per provider (D78); used by the agent form |
 | `GET /me/model-keys` | session (own only) | providers and "key set", never values; a lead gets no access to others' keys |
 | `PUT`, `DELETE /me/model-keys/{provider}` | session (own only) | in the same transaction, the caller's pending and approved calls in runs on that provider are re-opened for approval (`PUT`) or invalidated (`DELETE`) (D77, D94) |
 | `GET`, `POST /me/secrets` | session (own only) | metadata only (id, name, host, date). `POST` restores the caller's invalidated calls whose reference has the same name and host (D87) |

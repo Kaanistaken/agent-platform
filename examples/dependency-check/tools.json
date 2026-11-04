@@ -1,0 +1,68 @@
+[
+  {
+    "name": "read_repo_file",
+    "description": "Read a file from a public GitHub repository and return its raw content. Use path \"package.json\" for the npm manifest.",
+    "method": "GET",
+    "url_template": "https://api.github.com/repos/{{owner}}/{{repo}}/contents/{{path}}",
+    "headers_template": {
+      "Accept": "application/vnd.github.raw+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "vodafone-case-agent-platform"
+    },
+    "body_template": "",
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner, e.g. octocat" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "path": { "type": "string", "description": "File path at the repository root, e.g. package.json" }
+      },
+      "required": ["owner", "repo", "path"],
+      "additionalProperties": false
+    },
+    "requires_approval": false
+  },
+  {
+    "name": "osv_query",
+    "description": "Look up known vulnerabilities of one npm package version in the OSV.dev database.",
+    "method": "POST",
+    "url_template": "https://api.osv.dev/v1/query",
+    "headers_template": {},
+    "body_template": "{\"package\": {\"name\": \"{{name}}\", \"ecosystem\": \"npm\"}, \"version\": \"{{version}}\"}",
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "npm package name, e.g. lodash" },
+        "version": { "type": "string", "description": "Exact version, e.g. 4.17.15" }
+      },
+      "required": ["name", "version"],
+      "additionalProperties": false
+    },
+    "requires_approval": false
+  },
+  {
+    "name": "create_github_issue",
+    "description": "Open an issue in a GitHub repository. Needs the starter's GITHUB_TOKEN secret for api.github.com. Requires approval.",
+    "method": "POST",
+    "url_template": "https://api.github.com/repos/{{owner}}/{{repo}}/issues",
+    "headers_template": {
+      "Authorization": "Bearer {{secret.GITHUB_TOKEN}}",
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "vodafone-case-agent-platform"
+    },
+    "body_template": "{\"title\": \"{{title}}\", \"body\": \"{{body}}\"}",
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string" },
+        "repo": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string", "description": "Markdown" }
+      },
+      "required": ["owner", "repo", "title", "body"],
+      "additionalProperties": false
+    },
+    "requires_approval": true
+  }
+]
