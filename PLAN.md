@@ -124,6 +124,14 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D108 | 2026-11-04 | Manifest: a root `package.json` (npm) with exact versions `lodash@4.17.15`, `minimist@1.2.0`, `jsonwebtoken@8.5.1` (known advisories) and `ms@2.0.0` (no advisories, shows the "none found" case). Direct dependencies only; nothing is installed. OSV response sizes measured on 2026-11-04: about 27 KB, 5 KB, 8 KB and empty; `axios@0.21.0` was rejected (about 207 KB, over the 128 KB limit of D80). About 7 model turns of 20 (D80). (After Codex B4 review) | Codex B4: OSV responses can exceed the model limit; measured instead of assumed. |
 | D109 | 2026-11-04 | D92 is kept again: a stream broken mid-way is retried from the start. Codex's renewed suggestion to fail the run instead is not adopted. (After Codex B4 review) | The author's decision; same reason as D92. |
 | D110 | 2026-11-04 | Clarifications from the Codex B4 review, accepted as a group: (1) the recorded OpenAI run includes a real approval, GitHub `201` and the created issue URL; the Anthropic run includes at least one tool call and its continuation, not text only. (2) Both GitHub tools carry literal `User-Agent` and `X-GitHub-Api-Version` headers. (3) Tests are written in Codex's priority order (approval persistence and single dispatch; loop validation and limits; final states and cancellation; approval races and credential changes; interrupted write → `outcome_unknown`; templates and HTTP policy; secrets and starter credentials; team and usage authorization; provider streams and replay). (4) TLS template tests keep the logical `:443` through a test-only dial mapping injected privately; production always installs the real address policy and nothing (environment variable, flag, API) can disable it; TLS verification is never disabled globally. (5) The Next.js SSE path is checked manually in development and production modes. (6) `examples/` keeps event IDs, types and order; data are exported through allowlisted fields; before commit: scan for known secret values and their encoded forms, then token/key patterns, then a manual `git diff --cached` review. (7) Setup time ("about 3 minutes", "under 10 minutes") and spend ("a few cents") are measured before being claimed. | Follow from EA, R2, R4, R8 and D33, D81, D94, D102–D104. |
+| D111 | 2026-11-04 | No nice-to-haves for now (confirms D84); cancellation is already in the core (D97). (B5) | Core first. |
+| D112 | 2026-11-04 | Schedule: **Nov 5** thin vertical slice (login, agent/tool definitions, OpenAI, SSE, durable approval); **Nov 6** run lifecycle, security rules, Anthropic adapter; **Nov 7** both live provider runs and the real issue; **Nov 8** clean-clone setup measurement, remaining tests, `README.md`, `DESIGN.md`, `examples/`; **Nov 9** fixes and the author's screen recording. (B5; proposed by Codex B4) | Integrate end to end early; leave a day for fixes. |
+| D113 | 2026-11-04 | Toolchain: Go 1.26 in `go.mod`; Node 24 LTS, pinned in `.nvmrc`. Supported OS: only what was actually tested (Windows); macOS and Linux are stated as expected but untested. (B5) | Versions installed on the author's machine (Go 1.26.4, Node 24.18.0); claims stay honest. |
+| D114 | 2026-11-04 | Cold setup is measured on Nov 8 from a clean clone, timed, before the README claims "under 10 minutes". (B5) | Case deliverable; D110 (7). |
+| D115 | 2026-11-04 | Branch flow: commits go directly to `main`; each commit has one clear purpose. No pull-request flow. (B5) | One developer; reviewers read the history. |
+| D116 | 2026-11-04 | `README.md`, `AI_USAGE.md` and code comments are written in English (commits already, D36). (B5) | Reviewers and the case are English. |
+| D117 | 2026-11-04 | **Code review before every push**: Codex (`gpt-6.1-sol`, read-only, effort `high` per D4) reviews the commits about to be pushed; prompt and answer under `docs/reviews/<YYYY-MM-DD>-code-<n>/`. The author decides on the findings before the push. (B5) | The author's choice: every pushed change is reviewed. |
+| D118 | 2026-11-04 | Live-call budget within USD 5: development uses fixtures only; live calls are limited to model-ID verification, the two provider runs (D103) and the recorded example (D104), about USD 1, the rest kept for failed attempts and a repeated recording. Actual spend is measured and written in this file. (B5) | Budget cap; D110 (7). |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -137,7 +145,7 @@ options and their trade-offs → the author decides → the batch is sent to
 | B2b | Schema and API | `docs/schema.md` (D37–D57) | Closed; reviewed (`docs/reviews/2026-11-02-B2b/`) |
 | B3 | Run execution | Part 1 (D59–D72), part 2 (D73–D83), Codex review and the author's decisions on it (D84–D98). | Closed; reviewed (`docs/reviews/2026-11-02-B3/`) |
 | B4 | Example agent and verification | which example agent; its two real tools and authorised test target; testing approach, adapter fixtures, restart/concurrency tests; what proves both providers work; recorded run under `examples/`; screen-recording script | Closed; reviewed (`docs/reviews/2026-11-04-B4/`), D100–D110 |
-| B5 | Scope, schedule and process | which nice-to-haves (if any); day-by-day schedule including time for one full end-to-end integration; toolchain/dependency versions and supported OSes; when cold setup is measured; branch and merge flow; language of README, AI_USAGE and code comments (commits: D36) | Open |
+| B5 | Scope, schedule and process | which nice-to-haves (if any); day-by-day schedule including time for one full end-to-end integration; toolchain/dependency versions and supported OSes; when cold setup is measured; branch and merge flow; language of README, AI_USAGE and code comments (commits: D36) | Decided before review (D111–D118); Codex review next |
 
 ## Requirement status
 
@@ -182,12 +190,10 @@ To resume:
 1. Read `AGENTS.md` (the author decides, the agent implements; core first,
    D84; time-limit values are the agent's, D85), this file, `docs/schema.md`
    and `AI_USAGE.md`.
-2. B5 (scope, schedule, process), kept short under D84: nice-to-haves (none for
-   now, D84); day-by-day schedule (Codex B4 proposed one under "Items for B5");
-   toolchain versions and supported OSes; when cold setup is measured; branch
-   and merge flow; language of README, AI_USAGE and code comments; review
-   before push; live-call budget split within USD 5.
-3. Start coding. Time is short (deadline 2026-11-09): coding should start by
+2. B5 decided by the author on 2026-11-04 (D111–D118). Codex review of B5
+   (D4) next: `docs/reviews/2026-11-04-B5/`; then the author finalises.
+3. Start coding (Nov 5 slice, D112). Before every push: Codex code review
+   (D117). Time is short (deadline 2026-11-09): coding should start by
    2026-11-05.
 4. External action for the author (D107): create the public repository
    `vodafone-case-sandbox` with the D108 `package.json`, and a fine-grained

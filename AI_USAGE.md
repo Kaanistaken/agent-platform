@@ -37,6 +37,8 @@ added as the work happens.
 | 2026-11-04 | Claude Code | Wrote the issue tool's header as `Authorization: Bearer {{secret.GITHUB_TOKEN}}`. | **Corrected** after Codex's B4 review: this broke the whole-value header grammar (D93). The author extended the grammar to allow a literal prefix before one secret reference (D106). |
 | 2026-11-04 | Codex (B4) | Contradictions (quick path, header grammar), exact sandbox target, OSV response-size risk, and clarifications (evidence content of the recorded runs, GitHub headers, test priority order, TLS test seam, manual SSE check, secret scan of `examples/`, measuring setup time and spend). | **Accepted** (D105–D108, D110). Claude Code measured OSV response sizes for candidate packages; `axios@0.21.0` was dropped as too large (D108). |
 | 2026-11-04 | Codex (B4) | Reconsider D92: fail the run when a stream breaks mid-way instead of retrying it, to save time. | **Rejected by the author**; mid-stream retry stays (D109). |
+| 2026-11-04 | Claude Code | Recommended a single Codex code review on Nov 7 instead of a review before every push, and later suggested pushing only once a day to limit review rounds. | **Rejected by the author**: every push is reviewed (D117). |
+| 2026-11-04 | Claude Code | Recommended skipping the Codex review of B5 to save time. | **Rejected by the author**: B5 is reviewed like every batch (D4). |
 
 ## Notes on decisions
 

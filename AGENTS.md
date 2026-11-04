@@ -153,15 +153,17 @@ Asıl kayıt `PLAN.md` → "Kararlar" bölümüdür; burada yalnız özet durur.
   header'da sabit önek + tek `{{secret.NAME}}`; standart `testing` ile test
   yaklaşımı; her provider için birer manuel uçtan uca koşu; `examples/` kaydı.
   Ayrıntı `PLAN.md`.
+- B5 (D111–D118): nice-to-have yok; gün gün takvim; Go 1.26, Node 24 LTS,
+  yalnız denenen OS (Windows) desteklenir; soğuk kurulum 8 Kasım'da ölçülür;
+  doğrudan `main`, PR akışı yok; README, AI_USAGE ve kod yorumları İngilizce;
+  **her push'tan önce Codex kod incelemesi** (`docs/reviews/<tarih>-code-<n>/`);
+  geliştirmede fixture, canlı çağrılar yalnız doğrulama ve örnek koşu için.
 - Teslim 2026-11-09, bütçe tavanı şimdilik 5 USD (yukarıda).
 
 **Açık (kullanıcı kararı bekliyor).** Parantez içindekiler PDF'teki kısıtlar veya
 agent'ın notlarıdır; karar değildir:
 
-- Nice-to-have'ler: şimdilik yok (D84); ileride kullanıcı karar verir.
-- Dal ve merge akışı.
-- Değerlendiriciye görünen diğer metinlerin dili (README, AI_USAGE, kod yorumları; commit mesajları İngilizce — D36).
-- Push öncesi kod incelemesi yapılıp yapılmayacağı (plan danışması karara bağlandı, kod incelemesi değil).
+- Şu an açık karar yok; yeni çıkanlar buraya yazılır.
 
 Bir açık karar verilince bu listeden "verilmiş"e taşınır ve `PLAN.md`'ye kaydedilir.
 Açık kararların hangi batch'te ele alınacağı `PLAN.md` → "Planning batches"te.
