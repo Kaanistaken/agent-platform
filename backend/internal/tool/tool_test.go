@@ -71,6 +71,12 @@ func TestTemplateValidationRejects(t *testing.T) {
 			t.Errorf("%s: got %v, want a validation error", name, err)
 		}
 	}
+	// A reference inside the document still works.
+	local := def("GET", "https://api.github.com/{{a}}", nil, "",
+		`{"type":"object","$defs":{"s":{"type":"string"}},"properties":{"a":{"$ref":"#/$defs/s"}}}`)
+	if err := Validate(local); err != nil {
+		t.Errorf("local $ref: %v", err)
+	}
 }
 
 // D93: parameters cannot change the request's structure.

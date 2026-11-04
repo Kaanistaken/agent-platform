@@ -274,6 +274,9 @@ func compileSchema(raw json.RawMessage) (*jsonschema.Schema, map[string]bool, er
 		return nil, nil, invalid(`params_schema must be a JSON schema with "type": "object"`)
 	}
 	c := jsonschema.NewCompiler()
+	// The library's default loader reads local files for "$ref"; a tool
+	// owner must not be able to make the server load files or URLs (D11).
+	c.UseLoader(refuseLoader{})
 	if err := c.AddResource("params.json", doc); err != nil {
 		return nil, nil, invalid("params_schema: %v", err)
 	}
@@ -288,6 +291,14 @@ func compileSchema(raw json.RawMessage) (*jsonschema.Schema, map[string]bool, er
 		}
 	}
 	return s, props, nil
+}
+
+// refuseLoader refuses every external schema reference. References inside the
+// document ("#/...") and the built-in meta-schemas still work.
+type refuseLoader struct{}
+
+func (refuseLoader) Load(string) (any, error) {
+	return nil, errors.New("external schema references are not allowed")
 }
 
 func walkBody(v any, fn func(string) error) error {
