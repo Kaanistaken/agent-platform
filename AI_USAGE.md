@@ -40,6 +40,7 @@ added as the work happens.
 | 2026-11-04 | Claude Code | Recommended a single Codex code review on Nov 7 instead of a review before every push, and later suggested pushing only once a day to limit review rounds. | **Rejected by the author**: every push is reviewed (D117). |
 | 2026-11-04 | Claude Code | Recommended skipping the Codex review of B5 to save time. | **Rejected by the author**: B5 is reviewed like every batch (D4). |
 | 2026-11-04 | Codex (B5) | Consistency gaps (live call on Nov 5 vs. fixtures-only, D95 review not scheduled, self-review of review records), per-day exit criteria and Nov 5 work order, review prompt format, toolchain pinning, Windows setup pitfalls, clean-setup checklist, token-based cost estimates, one decision packet instead of serial questions. | **Accepted**; the author delegated the remaining choices to Claude Code (D119, D121, D122). |
+| 2026-11-04 | Claude Code (automated security review) | After the first implementation commit: the JSON Schema library's default loader reads local files, so a tool's parameter schema could load server files through `$ref`. | **Accepted**; fixed by Claude Code in `919d85e` (every external reference refused), restoring D11. |
 
 ## Notes on decisions
 

@@ -186,28 +186,63 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-State on 2026-11-04 (evening): all planning batches are closed (D1–D123). The
-first implementation is written but **not committed**: backend (`backend/`),
-UI (`web/`), example agent (`examples/dependency-check/`), `README.md`.
-`go test ./...` passes (api, auth, crypto, provider/openai,
-provider/anthropic, run, tool); `npm run build` passes; the SSE stream through
-the Next.js proxy was checked by hand in production mode (events immediate,
-heartbeat after 15 s). No live model call has been made: `DEV_OPENAI_API_KEY`
-and `DEV_ANTHROPIC_API_KEY` in `.env` are empty, so the D78 model-ID check
-returned 401.
+Stopped on 2026-11-04 (evening); work resumes on 2026-11-05. All planning
+batches are closed (D1–D123).
 
-To resume:
+**Done and committed (not pushed):** `9382ecd` Go backend and tests,
+`6d40b37` Next.js UI, `4eaf1a5` example agent, README and records. The last
+pushed commit is `6781c55`; the planning commits after it (`5150ae7`,
+`616ed28`, `3bb0474`) are not pushed either.
 
-1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`.
-2. Author: commit the implementation (D115), then the Codex code review before
-   the push (D117).
-3. Author's external actions: create `vodafone-case-sandbox` (public) with
-   `examples/dependency-check/package.json` at its root and a fine-grained
-   token (D107); enter the OpenAI key in the UI (D18).
-4. Live validation (D122): verify the model IDs (D78), one OpenAI run of the
-   read-only agent, then the full run with approval and a real issue (D110).
-5. Then (D112): SSE check in dev mode, Anthropic live run, `DESIGN.md`,
-   `examples/` recorded run, D95 limit review, clean-clone setup timing.
+**Verified:** `cd backend; go test ./...` passes (api, auth, crypto,
+provider/openai, provider/anthropic, run, tool; engine tests also with
+`-count=5`); `go vet` clean; `cd web; npm run build` passes; SSE through the
+Next.js proxy checked by hand in production mode (events immediate, heartbeat
+after 15 s); `go run ./cmd/example` created the example tools and agents
+through the API on a local server.
+
+**Not verified yet:** any real provider call (`DEV_OPENAI_API_KEY` and
+`DEV_ANTHROPIC_API_KEY` in `.env` are empty; the D78 model-ID check returned
+401), SSE in Next.js dev mode, clean-clone setup time.
+
+**Fix after the commits:** `919d85e` refuses external `$ref` in tool
+parameter schemas (an automated security review found that the JSON Schema
+library's default loader reads local files; D11). It is not covered by the
+running Codex review and needs its own review before the push (D117).
+
+**Push is waiting for the author's decisions on the D117 review.** The Codex
+review of `3bb0474..4eaf1a5` is in `docs/reviews/2026-11-04-code-1/answer.md`:
+19 findings (F01–F19), all marked by Codex as restoring an agreed contract (no
+new decision). Two high: F01 `X-Idempotency-Key` is not forbidden (Go may
+replay a POST, D94); F02 a run can be left `running` without a worker when an
+approval arrives while the previous worker is exiting (R4). F04 is already
+fixed by `919d85e`. The rest are medium/low (cross-team call state in a `409`,
+an Anthropic environment bearer token, text after `run_finished`, expiry not
+checked at decision/claim, cancellation of executing writes, credential
+restoration order, missing expiry after a key change, host match on secret
+replacement, deleted-tool links on agent update, tool rename collisions,
+discard marker after restart, queue overflow, text flush timer, GET retry
+budget across restarts, status kept when a body read fails, unknown usage
+shown as zero in the UI).
+
+To resume on 2026-11-05:
+
+1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
+   `git status`, `git log origin/main..HEAD`.
+2. Ask the author to decide on F01–F19 (summary given on 2026-11-04); record
+   the decisions here and in `AI_USAGE.md`; fix with regression tests; review
+   the fixes and `919d85e` (D117); push.
+3. Author's inputs: an OpenAI key (in `.env` as `DEV_OPENAI_API_KEY` for the
+   agent's checks, or entered in the UI, D18); the public repository
+   `vodafone-case-sandbox` with `examples/dependency-check/package.json` at
+   its root, a fine-grained token limited to it (Issues read/write), and the
+   GitHub account name for the README's `<owner>` (D107).
+4. Live validation (D122): model IDs via the model-list endpoints (D78); one
+   OpenAI run of the read-only agent; then the full run with approval and a
+   real issue (D110).
+5. Rest of the schedule (D112): SSE check in dev mode; Anthropic live run;
+   `DESIGN.md`; recorded run in `examples/`; D95 limit review; clean-clone
+   setup timing (D114).
 
 Deadline 2026-11-09; budget cap USD 5 (top of this file). Keys go in the
 git-ignored `.env` (`DEV_OPENAI_API_KEY`, `DEV_ANTHROPIC_API_KEY`) for the
