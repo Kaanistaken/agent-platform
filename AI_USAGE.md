@@ -39,6 +39,7 @@ added as the work happens.
 | 2026-11-04 | Codex (B4) | Reconsider D92: fail the run when a stream breaks mid-way instead of retrying it, to save time. | **Rejected by the author**; mid-stream retry stays (D109). |
 | 2026-11-04 | Claude Code | Recommended a single Codex code review on Nov 7 instead of a review before every push, and later suggested pushing only once a day to limit review rounds. | **Rejected by the author**: every push is reviewed (D117). |
 | 2026-11-04 | Claude Code | Recommended skipping the Codex review of B5 to save time. | **Rejected by the author**: B5 is reviewed like every batch (D4). |
+| 2026-11-04 | Codex (B5) | Consistency gaps (live call on Nov 5 vs. fixtures-only, D95 review not scheduled, self-review of review records), per-day exit criteria and Nov 5 work order, review prompt format, toolchain pinning, Windows setup pitfalls, clean-setup checklist, token-based cost estimates, one decision packet instead of serial questions. | **Accepted**; the author delegated the remaining choices to Claude Code (D119, D121, D122). |
 
 ## Notes on decisions
 
@@ -47,6 +48,7 @@ added as the work happens.
 | 2026-11-02 | B3 part 1 | Claude Code listed options for 14 points (D59–D72). The decisions are the author's own; the author changed the cancellation option (lead may also cancel, with an "Are you sure?" confirmation) gave their own reason for single tool calls per turn, and chose that after a rejection the model must propose a new call. |
 | 2026-11-02 | B3 part 2 | Claude Code listed options with recommendations. The author chose the Responses API and the models without a recommendation, set generous deadlines and the 10 MB / 128 KB response limits, and later left the values of time limits to Claude Code (D85). Model IDs for OpenAI were found by Claude Code in third-party listings and are to be verified against the provider before use (D78). |
 | 2026-11-02 | B3 review | The approval expiry rule (24 h, 72 h from Friday) is the author's own; Claude Code extended it to Saturday and Sunday under D85 (D90). |
+| 2026-11-04 | B5 review | The author delegated to Claude Code the choice of dependencies, versions, ports and run commands (D119), the folder and package layout (D121) and the remaining Codex B5 review points (D122); these are Claude Code's choices under that delegation, not the author's own. The author decided that Codex review costs are outside the budget (D120). |
 | 2026-11-04 | B4 | Claude Code listed options with recommendations; the author chose the dependency-check agent, asked whether reviewers would need their own repository, and chose an issue over a gist with a gist as fallback if reviewer setup proves too long (D100, D101). |
 
 ## Accepted AI-proposed options

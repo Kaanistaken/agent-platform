@@ -52,6 +52,13 @@ politikaları; provider ve model; örnek agent; test yaklaşımı; dal/commit ak
   sorulmadan belirlenir. Değer normal kullanımda asla takılmayacak, ama kötüye
   kullanımı sınırlayacak bir noktada seçilir ve `PLAN.md`'ye yazılır. Kural ve
   davranış (ne olacağı) yine kullanıcının kararıdır.
+- **Bağımlılık seçimi ve sürümleri, portlar ve çalıştırma komutları agent'a
+  bırakıldı** (kullanıcı, 2026-11-04, `PLAN.md` D119): kütüphaneler,
+  SDK/framework sürümleri, araç sabitlemeleri, yerel portlar ve
+  build/çalıştırma/test komutları sorulmadan seçilir; her biri kısa gerekçesiyle `PLAN.md`'ye yazılır. Verilmiş
+  kararlar (D5–D9) ve D84 geçerlidir; mimari ve davranış kullanıcının kararıdır.
+- **Klasör ve paket düzeni de agent'a bırakıldı** (kullanıcı, 2026-11-04, D121):
+  yaygın iyi uygulamaya göre; seçilen düzen `PLAN.md` D121'de.
 - Kullanıcının bir kararı gereksinim ihlali, güvenlik açığı veya hata
   doğuracaksa bunu açıkça ve somut örnekle söyler. Kullanıcı kararında ısrar
   ederse karar uygulanır ve risk kayda geçer; sessizce "düzeltme" yapılmaz.
@@ -158,6 +165,9 @@ Asıl kayıt `PLAN.md` → "Kararlar" bölümüdür; burada yalnız özet durur.
   doğrudan `main`, PR akışı yok; README, AI_USAGE ve kod yorumları İngilizce;
   **her push'tan önce Codex kod incelemesi** (`docs/reviews/<tarih>-code-<n>/`);
   geliştirmede fixture, canlı çağrılar yalnız doğrulama ve örnek koşu için.
+  B5 incelemesi sonrası (D119–D122): bağımlılık, sürüm, port, komut ve klasör
+  düzeni agent'ta; Codex inceleme maliyeti bütçeye girmez; kalan inceleme
+  maddeleri agent'ın seçimiyle kapandı. Ayrıntı `PLAN.md`.
 - Teslim 2026-11-09, bütçe tavanı şimdilik 5 USD (yukarıda).
 
 **Açık (kullanıcı kararı bekliyor).** Parantez içindekiler PDF'teki kısıtlar veya

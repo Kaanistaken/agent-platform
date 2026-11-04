@@ -132,6 +132,10 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D116 | 2026-11-04 | `README.md`, `AI_USAGE.md` and code comments are written in English (commits already, D36). (B5) | Reviewers and the case are English. |
 | D117 | 2026-11-04 | **Code review before every push**: Codex (`gpt-6.1-sol`, read-only, effort `high` per D4) reviews the commits about to be pushed; prompt and answer under `docs/reviews/<YYYY-MM-DD>-code-<n>/`. The author decides on the findings before the push. (B5) | The author's choice: every pushed change is reviewed. |
 | D118 | 2026-11-04 | Live-call budget within USD 5: development uses fixtures only; live calls are limited to model-ID verification, the two provider runs (D103) and the recorded example (D104), about USD 1, the rest kept for failed attempts and a repeated recording. Actual spend is measured and written in this file. (B5) | Budget cap; D110 (7). |
+| D119 | 2026-11-04 | The author leaves the **choice of dependencies and their versions**, **ports** and **run commands** to the agent (libraries, SDK and framework versions, toolchain pins such as `go.mod` `go`/`toolchain` lines, `.nvmrc`, lockfiles; local ports; build, run and test commands). The agent chooses without asking and records each choice with a one-line reason in this file. Decisions already made stay (D5–D9: Go, SQLite via `modernc.org/sqlite`, Next.js, `openai-go`, `anthropic-sdk-go`, no agent framework); architecture, behaviour and the core-first rule (D84) remain the author's. (B5 review) | Author's instruction after the Codex B5 review; avoids one question per library. |
+| D120 | 2026-11-04 | Codex review costs are not counted in the USD 5 model budget (D118 covers only the platform's own live model calls). (B5 review) | Author's decision. |
+| D121 | 2026-11-04 | The author leaves the **folder and package layout** to the agent, following common practice. The agent's layout: `backend/` (Go module; `cmd/server` entry point; `internal/` packages: `config`, `db` with migrations, `crypto`, `auth`, `store`, `api` (HTTP handlers and SSE), `run` (agent loop and workers), `provider` (`openai`, `anthropic`, scripted fake), `tool` (templates and the guarded HTTP client)); `web/` (Next.js App Router, TypeScript); `examples/`; `docs/`. (B5 review) | Author's instruction. Standard Go `cmd`/`internal` layout; one package per concern keeps each part explainable. |
+| D122 | 2026-11-04 | The author left the remaining Codex B5 review points to the agent; the agent's choices: (1) one live OpenAI validation run on Nov 5, counted in D118; (2) the D95 limit review happens on Nov 8 before the setup measurement; (3) each review round's own `prompt.md`/`answer.md` are not re-reviewed — the author checks them for secrets and accuracy — while code fixes are always reviewed (D117); (4) `.gitattributes` with `* text=auto eol=lf`; (5) cost is estimated from recorded tokens (labelled as an estimate) and checked against the provider dashboards; no cost fields in the schema; spend is written here after each live session; (6) the clarifications are adopted: per-day exit criteria and the Nov 5 work order from the Codex B5 answer, security protections built with the slice that uses them, tests written with each slice, a recording rehearsal on Nov 7–8, model IDs verified through the model-list endpoints, the review prompt format, and the clean-setup checklist. (B5 review) | Author's delegation; the choices follow the Codex B5 review. |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -145,7 +149,7 @@ options and their trade-offs → the author decides → the batch is sent to
 | B2b | Schema and API | `docs/schema.md` (D37–D57) | Closed; reviewed (`docs/reviews/2026-11-02-B2b/`) |
 | B3 | Run execution | Part 1 (D59–D72), part 2 (D73–D83), Codex review and the author's decisions on it (D84–D98). | Closed; reviewed (`docs/reviews/2026-11-02-B3/`) |
 | B4 | Example agent and verification | which example agent; its two real tools and authorised test target; testing approach, adapter fixtures, restart/concurrency tests; what proves both providers work; recorded run under `examples/`; screen-recording script | Closed; reviewed (`docs/reviews/2026-11-04-B4/`), D100–D110 |
-| B5 | Scope, schedule and process | which nice-to-haves (if any); day-by-day schedule including time for one full end-to-end integration; toolchain/dependency versions and supported OSes; when cold setup is measured; branch and merge flow; language of README, AI_USAGE and code comments (commits: D36) | Decided before review (D111–D118); Codex review next |
+| B5 | Scope, schedule and process | which nice-to-haves (if any); day-by-day schedule including time for one full end-to-end integration; toolchain/dependency versions and supported OSes; when cold setup is measured; branch and merge flow; language of README, AI_USAGE and code comments (commits: D36) | Closed; reviewed (`docs/reviews/2026-11-04-B5/`), D111–D122 |
 
 ## Requirement status
 
@@ -190,10 +194,11 @@ To resume:
 1. Read `AGENTS.md` (the author decides, the agent implements; core first,
    D84; time-limit values are the agent's, D85), this file, `docs/schema.md`
    and `AI_USAGE.md`.
-2. B5 decided by the author on 2026-11-04 (D111–D118). Codex review of B5
-   (D4) next: `docs/reviews/2026-11-04-B5/`; then the author finalises.
-3. Start coding (Nov 5 slice, D112). Before every push: Codex code review
-   (D117). Time is short (deadline 2026-11-09): coding should start by
+2. B5 closed on 2026-11-04 (D111–D122, Codex review in
+   `docs/reviews/2026-11-04-B5/`). All planning batches are closed.
+3. Start coding: the Nov 5 slice (D112) in the order of D122 (6). Record each
+   dependency, version, port and command in this file (D119). Before every
+   push: Codex code review (D117). Time is short (deadline 2026-11-09): coding should start by
    2026-11-05.
 4. External action for the author (D107): create the public repository
    `vodafone-case-sandbox` with the D108 `package.json`, and a fine-grained
