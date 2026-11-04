@@ -147,12 +147,17 @@ Asıl kayıt `PLAN.md` → "Kararlar" bölümüdür; burada yalnız özet durur.
   başına 4096 çıktı tokenı (teslimden önce gözden geçirilir); provider'ın ham
   mesaj içeriği saklanır ve aynen geri gönderilir. İptal çekirdekte kalır (D97);
   event'ler için veritabanı polling'i yok, yalnız süreç içi bildirim ve replay (D98).
+- B4 (D100–D110): örnek agent **dependency check** (public sandbox
+  `vodafone-case-sandbox`'tan `package.json` okuma, OSV.dev sorgusu, onaylı
+  GitHub issue); değerlendirici için ayrı salt okunur "hızlı yol" agent'ı;
+  header'da sabit önek + tek `{{secret.NAME}}`; standart `testing` ile test
+  yaklaşımı; her provider için birer manuel uçtan uca koşu; `examples/` kaydı.
+  Ayrıntı `PLAN.md`.
 - Teslim 2026-11-09, bütçe tavanı şimdilik 5 USD (yukarıda).
 
 **Açık (kullanıcı kararı bekliyor).** Parantez içindekiler PDF'teki kısıtlar veya
 agent'ın notlarıdır; karar değildir:
 
-- Örnek agent (PDF fikirleri: issue triage, dependency check, release notes).
 - Nice-to-have'ler: şimdilik yok (D84); ileride kullanıcı karar verir.
 - Dal ve merge akışı.
 - Değerlendiriciye görünen diğer metinlerin dili (README, AI_USAGE, kod yorumları; commit mesajları İngilizce — D36).

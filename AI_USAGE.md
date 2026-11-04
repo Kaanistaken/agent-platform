@@ -33,6 +33,10 @@ added as the work happens.
 | 2026-11-02 | Codex (B3) | Fail a run when a stream breaks after output has started, instead of retrying it. | **Rejected** on Claude Code's recommendation: the discard marker is needed anyway for calls repeated after a restart (D92). |
 | 2026-11-02 | Codex (B3) | Small template grammar; group of clarifications (atomic final transition and checkpoints, persisted counters, extended error classes, SSRF details, response truncation and masking order, SSE replay, SQLite start-up checks); output-token cap for the budget; keep provider-specific message content for replay. | **Accepted** (D93–D96). Claude Code verified the thinking-block requirement in Anthropic's documentation. The author added that budget-motivated limits are reviewed before delivery (D95). |
 | 2026-11-02 | Claude Code | Claimed in the B3 part 2 proposal that `store: false` means "no second copy at OpenAI". | **Corrected** after Codex's review: it only disables stored response state; OpenAI's abuse-monitoring retention is separate (D83). |
+| 2026-11-04 | Claude Code | Proposed a reviewer "quick path" in which a reviewer without a GitHub token reaches the approval request and rejects it. | **Corrected** after Codex's B4 review: the run-start rule refuses a run when a required secret is missing, so that path could never start. The author chose a separate read-only agent for the quick path (D105). |
+| 2026-11-04 | Claude Code | Wrote the issue tool's header as `Authorization: Bearer {{secret.GITHUB_TOKEN}}`. | **Corrected** after Codex's B4 review: this broke the whole-value header grammar (D93). The author extended the grammar to allow a literal prefix before one secret reference (D106). |
+| 2026-11-04 | Codex (B4) | Contradictions (quick path, header grammar), exact sandbox target, OSV response-size risk, and clarifications (evidence content of the recorded runs, GitHub headers, test priority order, TLS test seam, manual SSE check, secret scan of `examples/`, measuring setup time and spend). | **Accepted** (D105–D108, D110). Claude Code measured OSV response sizes for candidate packages; `axios@0.21.0` was dropped as too large (D108). |
+| 2026-11-04 | Codex (B4) | Reconsider D92: fail the run when a stream breaks mid-way instead of retrying it, to save time. | **Rejected by the author**; mid-stream retry stays (D109). |
 
 ## Notes on decisions
 
@@ -41,6 +45,7 @@ added as the work happens.
 | 2026-11-02 | B3 part 1 | Claude Code listed options for 14 points (D59–D72). The decisions are the author's own; the author changed the cancellation option (lead may also cancel, with an "Are you sure?" confirmation) gave their own reason for single tool calls per turn, and chose that after a rejection the model must propose a new call. |
 | 2026-11-02 | B3 part 2 | Claude Code listed options with recommendations. The author chose the Responses API and the models without a recommendation, set generous deadlines and the 10 MB / 128 KB response limits, and later left the values of time limits to Claude Code (D85). Model IDs for OpenAI were found by Claude Code in third-party listings and are to be verified against the provider before use (D78). |
 | 2026-11-02 | B3 review | The approval expiry rule (24 h, 72 h from Friday) is the author's own; Claude Code extended it to Saturday and Sunday under D85 (D90). |
+| 2026-11-04 | B4 | Claude Code listed options with recommendations; the author chose the dependency-check agent, asked whether reviewers would need their own repository, and chose an issue over a gist with a gist as fallback if reviewer setup proves too long (D100, D101). |
 
 ## Accepted AI-proposed options
 

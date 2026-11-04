@@ -125,9 +125,13 @@ cumulative, so the latest value is stored (D94).
     allowed only as a whole path segment, a query value, a header value or a
     whole JSON string value in the body (D93).
   - Secret references (`{{secret.NAME}}`) are validated separately and allowed
-    only in headers (D27, D45). Sensitive headers (`Authorization`,
-    `Proxy-Authorization`, `X-API-Key`, `Cookie`, and similar) accept only a
-    secret reference, never a literal value (D54).
+    only in headers (D27, D45). A header value with a secret is an optional
+    literal prefix followed by exactly one `{{secret.NAME}}` at the end, e.g.
+    `Bearer {{secret.GITHUB_TOKEN}}`; the prefix has no placeholder and no
+    CR/LF, and a secret never shares a header value with a model parameter
+    (D106). Sensitive headers (`Authorization`, `Proxy-Authorization`,
+    `X-API-Key`, `Cookie`, and similar) must contain a secret reference, never
+    a literal value alone (D54, D106).
   - `Host`, hop-by-hop headers and `Idempotency-Key` are rejected (D94).
 - **Secrets**: `PUT` changes only the value. Changing a name or host means
   deleting the secret and adding a new one. Deleting a secret durably
