@@ -1,0 +1,4 @@
+# LF line endings in the repository and the working tree (D122).
+* text=auto eol=lf
+*.png binary
+*.ico binary

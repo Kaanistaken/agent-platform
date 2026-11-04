@@ -3,3 +3,14 @@
 
 # Raw Codex session transcripts; only prompt.md and answer.md are kept
 docs/reviews/**/codex-run.log
+
+# Local database (SQLite, WAL and backups)
+backend/data/
+*.db
+*.db-wal
+*.db-shm
+
+# Build output and dependencies
+web/node_modules/
+web/.next/
+web/*.tsbuildinfo
