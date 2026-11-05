@@ -48,11 +48,26 @@ var (
 var allowedMethods = map[string]bool{"GET": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true}
 
 // Headers a template may never set (D94): the transport owns them, and Go may
-// replay a request carrying Idempotency-Key.
+// replay a request carrying Idempotency-Key or X-Idempotency-Key (D63).
 var forbiddenHeaders = map[string]bool{
 	"Host": true, "Connection": true, "Keep-Alive": true, "Proxy-Connection": true,
 	"Transfer-Encoding": true, "Upgrade": true, "Te": true, "Trailer": true,
-	"Content-Length": true, "Idempotency-Key": true, "Proxy-Authenticate": true,
+	"Content-Length": true, "Idempotency-Key": true, "X-Idempotency-Key": true, "Proxy-Authenticate": true,
+}
+
+// ForbiddenHeader reports whether a template may not set the header. The
+// client checks it again before sending, so a request stored before a rule was
+// added is refused too.
+func ForbiddenHeader(name string) bool { return forbiddenHeaders[http.CanonicalHeaderKey(name)] }
+
+// Host returns the normalised literal host of a definition's URL template, or
+// "" if the template is not valid.
+func Host(d Definition) string {
+	p, err := parseURLTemplate(d.URLTemplate)
+	if err != nil {
+		return ""
+	}
+	return p.host
 }
 
 // Headers that must carry a secret reference, never a literal value (D54).

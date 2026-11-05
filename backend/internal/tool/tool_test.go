@@ -16,6 +16,8 @@ import (
 	"testing"
 )
 
+func noAttempt() error { return nil }
+
 func def(method, url string, headers map[string]string, body, schema string) Definition {
 	return Definition{Name: "t", Description: "d", Method: method, URLTemplate: url, Headers: headers,
 		BodyTemplate: body, ParamsSchema: json.RawMessage(schema)}
@@ -55,6 +57,7 @@ func TestTemplateValidationRejects(t *testing.T) {
 		"secret in url":         def("GET", "https://api.github.com/{{secret.T}}", nil, "", ownerRepo),
 		"secret in body":        def("POST", "https://api.github.com/x", nil, `{"a":"{{secret.T}}"}`, ownerRepo),
 		"partial body string":   def("POST", "https://api.github.com/x", nil, `{"a":"hi {{title}}"}`, ownerRepo),
+		"x-idempotency-key":     def("POST", "https://api.github.com/x", map[string]string{"x-idempotency-key": "k"}, "", ownerRepo),
 		"literal authorization": def("GET", "https://api.github.com/x", map[string]string{"Authorization": "Bearer abc"}, "", ownerRepo),
 		"param authorization":   def("GET", "https://api.github.com/x", map[string]string{"Authorization": "{{title}}"}, "", ownerRepo),
 		"secret not at the end": def("GET", "https://api.github.com/x", map[string]string{"Authorization": "{{secret.T}} x"}, "", ownerRepo),
@@ -156,7 +159,7 @@ func TestAddressPolicy(t *testing.T) {
 		t.Errorf("public address refused: %v", err)
 	}
 	// The production client refuses loopback before anything is sent.
-	_, err := NewClient().Do(context.Background(), Request{Method: "GET", URL: "https://127.0.0.1/x", Host: "127.0.0.1"}, nil)
+	_, err := NewClient().Do(context.Background(), Request{Method: "GET", URL: "https://127.0.0.1/x", Host: "127.0.0.1"}, nil, GetAttempts, noAttempt)
 	var f *Failure
 	if !errors.As(err, &f) || f.Code != "address_refused" || f.MaySent {
 		t.Fatalf("loopback: %v", err)
@@ -204,7 +207,7 @@ func TestClientSecretsMaskingAndLimits(t *testing.T) {
 			Headers: []Header{{Name: "Authorization", Prefix: "Bearer ", Secret: "GITHUB_TOKEN"}}}
 	}
 
-	res, err := c.Do(context.Background(), req("/echo"), secrets)
+	res, err := c.Do(context.Background(), req("/echo"), secrets, GetAttempts, noAttempt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,12 +218,12 @@ func TestClientSecretsMaskingAndLimits(t *testing.T) {
 		t.Fatalf("secret echoed back: %s", res.Text)
 	}
 
-	res, _ = c.Do(context.Background(), req("/redirect"), secrets)
+	res, _ = c.Do(context.Background(), req("/redirect"), secrets, GetAttempts, noAttempt)
 	if res.Status != http.StatusFound || !strings.Contains(res.Text, "Location: https://evil.example/steal") {
 		t.Fatalf("redirect: %d %s", res.Status, res.Text)
 	}
 
-	res, _ = c.Do(context.Background(), req("/big"), secrets)
+	res, _ = c.Do(context.Background(), req("/big"), secrets, GetAttempts, noAttempt)
 	if len(res.Text) > MaxModelBytes+100 || !strings.Contains(res.Text, "[truncated:") {
 		t.Fatalf("not truncated: %d bytes", len(res.Text))
 	}
@@ -228,19 +231,19 @@ func TestClientSecretsMaskingAndLimits(t *testing.T) {
 		t.Fatal("truncation split a UTF-8 character")
 	}
 
-	res, _ = c.Do(context.Background(), req("/binary"), secrets)
+	res, _ = c.Do(context.Background(), req("/binary"), secrets, GetAttempts, noAttempt)
 	if !strings.Contains(res.Text, "[non-text response: image/png, 4 bytes]") {
 		t.Fatalf("binary: %s", res.Text)
 	}
 
 	// D32: a secret bound to another host is never attached.
 	gotAuth = ""
-	_, err = c.Do(context.Background(), req("/echo"), map[string]Secret{"GITHUB_TOKEN": {Value: secret, Host: "api.github.com"}})
+	_, err = c.Do(context.Background(), req("/echo"), map[string]Secret{"GITHUB_TOKEN": {Value: secret, Host: "api.github.com"}}, GetAttempts, noAttempt)
 	var f *Failure
 	if !errors.As(err, &f) || f.Code != "host_mismatch" || gotAuth != "" {
 		t.Fatalf("host mismatch: %v (sent auth %q)", err, gotAuth)
 	}
-	_, err = c.Do(context.Background(), req("/echo"), nil)
+	_, err = c.Do(context.Background(), req("/echo"), nil, GetAttempts, noAttempt)
 	if !errors.As(err, &f) || f.Code != "secret_missing" {
 		t.Fatalf("missing secret: %v", err)
 	}
@@ -253,8 +256,8 @@ func TestClientRetries(t *testing.T) {
 		hits[r.Method]++
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
-	c.Do(context.Background(), Request{Method: "GET", URL: "https://example.com/x", Host: "example.com"}, nil)
-	c.Do(context.Background(), Request{Method: "POST", URL: "https://example.com/x", Host: "example.com", Body: "{}"}, nil)
+	c.Do(context.Background(), Request{Method: "GET", URL: "https://example.com/x", Host: "example.com"}, nil, GetAttempts, noAttempt)
+	c.Do(context.Background(), Request{Method: "POST", URL: "https://example.com/x", Host: "example.com", Body: "{}"}, nil, GetAttempts, noAttempt)
 	if hits["GET"] != 2 || hits["POST"] != 1 {
 		t.Fatalf("hits %v", hits)
 	}
@@ -272,3 +275,80 @@ func TestNormalizeHost(t *testing.T) {
 }
 
 var _ = net.IPv4len
+
+// D91, D94: the attempt budget is respected, every send is recorded first, and
+// nothing is sent when the record fails.
+func TestClientAttemptBudget(t *testing.T) {
+	hits := 0
+	c, _ := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	get := Request{Method: "GET", URL: "https://example.com/x", Host: "example.com"}
+	recorded := 0
+	count := func() error { recorded++; return nil }
+
+	c.Do(context.Background(), get, nil, 1, count)
+	if hits != 1 || recorded != 1 {
+		t.Fatalf("budget 1: hits %d, recorded %d", hits, recorded)
+	}
+	_, err := c.Do(context.Background(), get, nil, 0, count)
+	if hits != 1 || err == nil {
+		t.Fatalf("budget 0: hits %d, err %v", hits, err)
+	}
+	_, err = c.Do(context.Background(), get, nil, GetAttempts, func() error { return errors.New("db down") })
+	var f *Failure
+	if hits != 1 || !errors.As(err, &f) || f.MaySent {
+		t.Fatalf("failed record: hits %d, err %v", hits, err)
+	}
+}
+
+// F01: a stored request carrying a forbidden header is refused before sending.
+func TestClientRefusesForbiddenHeader(t *testing.T) {
+	hits := 0
+	c, _ := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits++ }))
+	_, err := c.Do(context.Background(), Request{Method: "POST", URL: "https://example.com/x", Host: "example.com",
+		Headers: []Header{{Name: "x-idempotency-key", Value: "k"}}, Body: "{}"}, nil, 1, noAttempt)
+	var f *Failure
+	if !errors.As(err, &f) || f.MaySent || hits != 0 {
+		t.Fatalf("err %v, hits %d", err, hits)
+	}
+}
+
+// D99: once a status arrived, the call has a response even if the body read
+// fails or a later GET attempt gets no response; the diagnostic is masked.
+func TestClientKeepsStatusWhenBodyFails(t *testing.T) {
+	const secret = "ghp_cut_secret"
+	getHits := 0
+	c, _ := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			getHits++
+			if getHits == 1 {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			panic(http.ErrAbortHandler) // no response at all
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Length", "100")
+		w.WriteHeader(http.StatusCreated)
+		io.WriteString(w, `{"token":"`+secret)
+		w.(http.Flusher).Flush()
+		panic(http.ErrAbortHandler) // the connection drops mid-body
+	}))
+	secrets := map[string]Secret{"T": {Value: secret, Host: "example.com"}}
+	post := Request{Method: "POST", URL: "https://example.com/x", Host: "example.com", Body: "{}",
+		Headers: []Header{{Name: "Authorization", Prefix: "Bearer ", Secret: "T"}}}
+	res, err := c.Do(context.Background(), post, secrets, 1, noAttempt)
+	if err != nil || res.Status != http.StatusCreated {
+		t.Fatalf("status %d, err %v", res.Status, err)
+	}
+	if !strings.Contains(res.Text, "[reading the response body failed") || strings.Contains(res.Text, secret) {
+		t.Fatalf("text: %s", res.Text)
+	}
+
+	res, err = c.Do(context.Background(), Request{Method: "GET", URL: "https://example.com/y", Host: "example.com"}, nil, GetAttempts, noAttempt)
+	if err != nil || res.Status != http.StatusServiceUnavailable || getHits != 2 {
+		t.Fatalf("GET: status %d, err %v, hits %d", res.Status, err, getHits)
+	}
+}

@@ -16,7 +16,8 @@ import (
 	"github.com/kaang/vodafone-case/backend/internal/tool"
 )
 
-// fakeExec records tool requests instead of sending them.
+// fakeExec records tool requests instead of sending them. Each call counts as
+// one attempt and is recorded through onAttempt first, like the real client.
 type fakeExec struct {
 	mu    sync.Mutex
 	calls []tool.Request
@@ -24,15 +25,24 @@ type fakeExec struct {
 	res   tool.Result
 	err   error
 	gate  chan struct{}
+	late  bool // with gate: ignore cancellation and answer when the gate opens
 }
 
-func (f *fakeExec) Do(ctx context.Context, r tool.Request, s map[string]tool.Secret) (tool.Result, error) {
+func (f *fakeExec) Do(ctx context.Context, r tool.Request, s map[string]tool.Secret, maxAttempts int, onAttempt func() error) (tool.Result, error) {
+	if maxAttempts <= 0 {
+		return tool.Result{}, &tool.Failure{Code: "interrupted", Msg: "no attempts left"}
+	}
+	if err := onAttempt(); err != nil {
+		return tool.Result{}, &tool.Failure{Code: "interrupted", Msg: "not recorded"}
+	}
 	f.mu.Lock()
 	f.calls = append(f.calls, r)
 	f.keys = append(f.keys, s)
-	res, err, gate := f.res, f.err, f.gate
+	res, err, gate, late := f.res, f.err, f.gate, f.late
 	f.mu.Unlock()
-	if gate != nil {
+	if gate != nil && late {
+		<-gate
+	} else if gate != nil {
 		select {
 		case <-gate:
 		case <-ctx.Done():

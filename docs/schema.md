@@ -86,20 +86,22 @@ change to a snapshot is replacing a deleted secret's ID with its replacement
 | `pending_approval` | `approved` / `rejected` | the starter decides with the current `approval_revision` (D21, D26, D55) |
 | `pending_approval`, `approved` | `invalidated` | a bound secret or the model key is deleted (D29, D77, D86) |
 | `pending_approval`, `approved` | `pending_approval` (revision + 1) | the starter's model key is replaced (D77, D94) |
-| `invalidated` | `pending_approval` (revision + 1) | every missing prerequisite is restored: a secret with the same name and host (D87), a model key |
-| `pending_approval`, `approved`, `invalidated` | `rejected` | approval expiry (`approval_expired`) or run cancellation (`run_cancelled`) |
+| `invalidated` | `pending_approval` (revision + 1) | every missing prerequisite is restored, in any order: a secret with the same name and host (D87), a model key; each restoration re-checks every invalidated call, and a call still missing something keeps waiting with the reason that is still true (D94, D124) |
+| `pending_approval`, `approved`, `invalidated` | `rejected` | approval expiry (`approval_expired`) or run cancellation (`run_cancelled`); expiry is checked inside every decision and claim, not only by the sweep, so an expired request is never decided or sent (D90, D124) |
 | `approved` | `executing` | a worker claims the call in one conditional update after re-checking the secrets and the model key (D86) |
-| `executing` | `succeeded` | an HTTP response was received (any status code; it goes to the model) |
-| `executing` | `failed` | no response and the request was not sent (e.g. host check, missing secret, refused address), or a `GET` failed after its one retry (D91) |
-| `executing` | `outcome_unknown` | a non-`GET` call was interrupted by a crash, timeout or cancellation after it may have been sent; never retried (D63) |
+| `executing` | `succeeded` | an HTTP response was received (any status code; it goes to the model), also when reading its body failed afterwards: the status is kept and the text notes the failure (D99, D124) |
+| `executing` | `failed` | no response and the request was not sent (e.g. host check, missing secret, refused address), or a `GET` failed after its one retry (D91). `attempt_count` is incremented and committed before every send, so a `GET` has two sends in total across restarts; with none left it fails (`interrupted`) (D91, D94, D124) |
+| `executing` | `outcome_unknown` | a non-`GET` call was interrupted by a crash, timeout or cancellation after it may have been sent; never retried (D63). On cancellation this happens in the cancelling transaction, before `run_finished` (`run_cancelled`); a late HTTP completion does not change it (D124) |
+| `executing` | `failed` (`run_cancelled`) | a `GET` being sent when the run is cancelled (D124) |
 
 `reason_code` values: `secret_deleted`, `model_key_changed`, `model_key_deleted`,
 `rejected_by_starter`, `approval_expired`, `run_cancelled`, `unknown_tool`,
 `malformed_json`, `schema_violation`, `host_mismatch`, `secret_missing`,
 `address_refused`, `timeout`, `interrupted`.
 
-`approval_expires_at` is set once, when the call first waits for approval, and
-is not reset by invalidation: 24 hours later, moved to Monday at the same time
+`approval_expires_at` is set once, when the call first waits for the starter
+(`pending_approval` or `invalidated`, including a call of a tool without
+approval that is re-opened or invalidated later), and is never moved: 24 hours later, moved to Monday at the same time
 if that falls on a Saturday or Sunday, in server local time (D90).
 
 ### Model-call attempts (D75, D79, D88)
@@ -132,7 +134,7 @@ cumulative, so the latest value is stored (D94).
     (D106). Sensitive headers (`Authorization`, `Proxy-Authorization`,
     `X-API-Key`, `Cookie`, and similar) must contain a secret reference, never
     a literal value alone (D54, D106).
-  - `Host`, hop-by-hop headers and `Idempotency-Key` are rejected (D94).
+  - `Host`, hop-by-hop headers, `Idempotency-Key` and `X-Idempotency-Key` are rejected (D94); the client checks this again before sending (D124).
 - **Secrets**: `PUT` changes only the value. Changing a name or host means
   deleting the secret and adding a new one. Deleting a secret durably
   invalidates the pending and approved calls bound to it (D29, D54, D55, D86).
@@ -177,7 +179,7 @@ never from the request (D45).
 | `PUT /agents/{id}` | owner | `tool_ids` replaces the list; links that already exist to deleted tools may stay, new deleted links are rejected (D46); owner/team/deleted fields cannot be changed |
 | `DELETE /agents/{id}` | owner or team lead | soft delete; UI asks for confirmation (D43, D44, D58) |
 | `POST /tools` | team | template validation (above) |
-| `PUT /tools/{id}` | owner | revalidated; past snapshots unchanged |
+| `PUT /tools/{id}` | owner | revalidated; past snapshots unchanged; `409` if the new name duplicates another tool (deleted ones included) linked to an agent this tool is linked to (D49, D124) |
 | `DELETE /tools/{id}` | owner | soft delete; UI asks for confirmation (D34); no lead override |
 | `POST /agents/{id}/clone` | team | caller becomes owner; same tool references; deleted tools are dropped and the response lists them (D52); deleted source cannot be cloned |
 | `POST /tools/{id}/clone` | team | copies the definition; no credentials are copied |
@@ -186,7 +188,7 @@ never from the request (D45).
 | `GET /runs/{id}` | team | messages, tool calls, snapshot (without secret bindings' details); token counts only for the starter and the team lead (D53) |
 | `GET /runs/{id}/events` | team | SSE (D67). Each event's `id` is its `seq`. Replays events after `Last-Event-ID`, or all events when absent (a newly opened page), then continues live. Token usage events only for the starter and the team lead (D53, D94). Session checked at every heartbeat (~15 s); the stream closes when it is no longer valid (D71) and after the final event. GET never resumes work |
 | `POST /runs/{id}/cancel` | run starter or a team lead | UI asks for confirmation; non-terminal run → `cancelled`, in-flight model call and HTTP request stopped, open approvals closed (`run_cancelled`), an executing non-`GET` call becomes `outcome_unknown`; terminal run → `409` (D66, D97) |
-| `POST /runs/{id}/tool-calls/{callId}/approve` | run starter only | `{approval_revision}` must match (D55); atomic conditional update (D21); lead or agent owner has no approval authority |
+| `POST /runs/{id}/tool-calls/{callId}/approve` | run starter only | `{approval_revision}` must match (D55); atomic conditional update (D21); lead or agent owner has no approval authority; a call that is not in the run is `404` (D39); an expired request is `409` and the run is cancelled (`approval_expired`, D90) |
 | `POST /runs/{id}/tool-calls/{callId}/reject` | run starter only | `{approval_revision, note?}`; the note goes to the model with the rejection (D72, D89) |
 | `GET /approvals` | session | the caller's pending and invalidated approvals in non-terminal runs, with reason and expiry; previews are secret-free |
 | `GET /usage` | session | member: own totals; lead: every member's totals and team total (D41). Totals count only known usage and also report how many attempts had unavailable usage, so unknown is never shown as zero (D47, D75) |
@@ -194,8 +196,11 @@ never from the request (D45).
 ### Event types (`run_events.type`)
 
 `run_status`, `text_delta` (coalesced ~250 ms, tagged with its model-call
-attempt, D70), `attempt_discarded` (D92), `model_retry` (wait in seconds, D79),
-`tool_call` (proposal with secret-free preview), `tool_call_status`,
-`tool_result` (masked, truncated), `usage` (D53), `run_finished` (final status
-and `error_code`; always the last event). Pending text is flushed before any
-other event type (D94).
+attempt, D70; a timer flushes text that would otherwise wait for the next
+delta), `attempt_discarded` (D92; also emitted at start-up for an attempt cut
+by a stop or crash after it streamed text), `model_retry` (wait in seconds,
+D79), `tool_call` (proposal with secret-free preview), `tool_call_status`
+(with `approval_expires_at` when set), `tool_result` (masked, truncated),
+`usage` (D53), `run_finished` (final status and `error_code`; always the last
+event: text still buffered when the run finishes is dropped). Pending text is
+flushed before any other event type (D94, D124).

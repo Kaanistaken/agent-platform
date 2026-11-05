@@ -174,3 +174,22 @@ func TestErrorClassification(t *testing.T) {
 		})
 	}
 }
+
+// R7, D12: an environment bearer token is never sent next to the starter's key.
+func TestEnvironmentCredentialsIgnored(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "") // so the env bearer token would be the SDK's choice
+	t.Setenv("ANTHROPIC_AUTH_TOKEN", "env-bearer-token")
+	var auth, key string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth, key = r.Header.Get("Authorization"), r.Header.Get("X-Api-Key")
+		w.Header().Set("Content-Type", "text/event-stream")
+		io.WriteString(w, toolUseStream)
+	}))
+	t.Cleanup(srv.Close)
+	if _, err := New(option.WithBaseURL(srv.URL)).Stream(context.Background(), request(), provider.Callbacks{}); err != nil {
+		t.Fatal(err)
+	}
+	if auth != "" || key != "sk-ant-user" {
+		t.Fatalf("Authorization %q, X-Api-Key %q", auth, key)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kaang/vodafone-case/backend/internal/crypto"
@@ -81,15 +82,20 @@ func addMessage(ctx context.Context, tx *sql.Tx, runID int64, m provider.Message
 	return err
 }
 
-// textBuffer coalesces streamed text into events about every 250 ms (D70).
+// textBuffer coalesces streamed text into events about every 250 ms (D70). A
+// timer flushes text that would otherwise wait for the next delta. The mutex is
+// held through the event append, so flushes keep their order, and close is a
+// barrier: after it returns, no timer callback writes anything.
 type textBuffer struct {
+	mu       sync.Mutex
 	e        *Engine
-	ctx      context.Context
 	runID    int64
 	callID   int64
 	attempt  int
 	pending  strings.Builder
 	last     time.Time
+	timer    *time.Timer
+	closed   bool
 	streamed bool
 }
 
@@ -97,24 +103,70 @@ func (b *textBuffer) add(delta string) {
 	if delta == "" {
 		return
 	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.closed {
+		return
+	}
 	b.streamed = true
 	b.pending.WriteString(delta)
-	if b.e.Now().Sub(b.last) >= textFlushInterval {
-		b.flush()
+	wait := textFlushInterval - b.e.Now().Sub(b.last)
+	if wait <= 0 {
+		b.flushLocked()
+		return
+	}
+	if b.timer == nil {
+		b.timer = time.AfterFunc(wait, b.onTimer)
 	}
 }
 
-func (b *textBuffer) flush() {
+func (b *textBuffer) onTimer() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !b.closed {
+		b.flushLocked()
+	}
+}
+
+// close writes what is left and stops the timer for good.
+func (b *textBuffer) close() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.flushLocked()
+	b.closed = true
+}
+
+func (b *textBuffer) flushLocked() {
+	if b.timer != nil {
+		b.timer.Stop()
+		b.timer = nil
+	}
 	if b.pending.Len() == 0 {
 		return
 	}
 	text := b.pending.String()
 	b.pending.Reset()
 	b.last = b.e.Now()
-	b.e.withTx(context.Background(), b.runID, func(tx *sql.Tx) error {
-		return emit(b.ctx, tx, b.runID, EvTextDelta, map[string]any{
+	ctx := context.Background()
+	b.e.withTx(ctx, b.runID, func(tx *sql.Tx) error {
+		// Nothing is appended after the final event (D94): text of a run
+		// that has finished meanwhile is dropped.
+		if done, err := runFinished(ctx, tx, b.runID); err != nil || done {
+			return err
+		}
+		return emit(ctx, tx, b.runID, EvTextDelta, map[string]any{
 			"model_call_id": b.callID, "attempt": b.attempt, "text": text})
 	})
+}
+
+// runFinished reports whether the run is in a terminal state, read inside the
+// transaction that would append an event.
+func runFinished(ctx context.Context, tx *sql.Tx, runID int64) (bool, error) {
+	var status string
+	if err := tx.QueryRowContext(ctx, "SELECT status FROM runs WHERE id = ?", runID).Scan(&status); err != nil {
+		return false, err
+	}
+	return terminal(status), nil
 }
 
 // modelTurn makes one model turn, with retries owned here (D79, D88, D92).
@@ -201,6 +253,9 @@ func (e *Engine) modelTurn(ctx context.Context, r *runState) error {
 			if err := endAttemptTx(ctx, tx, mcID, outcome, pe.Code, e.Now()); err != nil {
 				return err
 			}
+			if done, err := runFinished(ctx, tx, r.ID); err != nil || done {
+				return err // cancelled meanwhile: no events after the final one
+			}
 			if streamed {
 				if err := emit(ctx, tx, r.ID, EvAttemptDiscarded, map[string]any{"model_call_id": mcID, "attempt": attempt}); err != nil {
 					return err
@@ -232,7 +287,7 @@ func (e *Engine) attempt(ctx context.Context, r *runState, prov provider.Provide
 		return provider.Result{}, err, 0, false
 	}
 
-	buf := &textBuffer{e: e, ctx: context.Background(), runID: r.ID, callID: mcID, attempt: attempt, last: e.Now()}
+	buf := &textBuffer{e: e, runID: r.ID, callID: mcID, attempt: attempt, last: e.Now()}
 	actx, cancel := context.WithTimeout(ctx, ModelAttemptTimeout)
 	defer cancel()
 	res, err := prov.Stream(actx, req, provider.Callbacks{
@@ -245,7 +300,7 @@ func (e *Engine) attempt(ctx context.Context, r *runState, prov provider.Provide
 				usage_status = 'partial' WHERE id = ?`, u.Input, u.Output, mcID)
 		},
 	})
-	buf.flush()
+	buf.close()
 	if err != nil && actx.Err() == context.DeadlineExceeded && ctx.Err() == nil {
 		// The attempt's own timeout is transient (D94).
 		err = &provider.Error{Class: provider.Transient, Code: "provider_error", Msg: "the model call timed out"}

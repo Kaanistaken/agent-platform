@@ -137,6 +137,7 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D121 | 2026-11-04 | The author leaves the **folder and package layout** to the agent, following common practice. The agent's layout: `backend/` (Go module; `cmd/server` entry point; `internal/` packages: `config`, `db` with migrations, `crypto`, `auth`, `store`, `api` (HTTP handlers and SSE), `run` (agent loop and workers), `provider` (`openai`, `anthropic`, scripted fake), `tool` (templates and the guarded HTTP client)); `web/` (Next.js App Router, TypeScript); `examples/`; `docs/`. (B5 review) | Author's instruction. Standard Go `cmd`/`internal` layout; one package per concern keeps each part explainable. |
 | D122 | 2026-11-04 | The author left the remaining Codex B5 review points to the agent; the agent's choices: (1) one live OpenAI validation run on Nov 5, counted in D118; (2) the D95 limit review happens on Nov 8 before the setup measurement; (3) each review round's own `prompt.md`/`answer.md` are not re-reviewed — the author checks them for secrets and accuracy — while code fixes are always reviewed (D117); (4) `.gitattributes` with `* text=auto eol=lf`; (5) cost is estimated from recorded tokens (labelled as an estimate) and checked against the provider dashboards; no cost fields in the schema; spend is written here after each live session; (6) the clarifications are adopted: per-day exit criteria and the Nov 5 work order from the Codex B5 answer, security protections built with the slice that uses them, tests written with each slice, a recording rehearsal on Nov 7–8, model IDs verified through the model-list endpoints, the review prompt format, and the clean-setup checklist. (B5 review) | Author's delegation; the choices follow the Codex B5 review. |
 | D123 | 2026-11-04 | Implementation choices made by the agent under D85, D119 and D121 (recorded, not the author's decisions). **Dependencies** (backend): `modernc.org/sqlite` v1.61.1 (D6), `github.com/openai/openai-go/v3` v3.94.0 and `github.com/anthropics/anthropic-sdk-go` v1.84.0 (D9; used for transport, errors and stream parsing only; request bodies set with `option.WithJSONSet` so provider items are sent back verbatim, D96), `golang.org/x/crypto` (bcrypt, D16), `github.com/joho/godotenv` v1.5.1 (`.env` loading), `github.com/santhosh-tekuri/jsonschema/v6` v6.0.3 (tool parameter schemas, R3). No HTTP framework: Go's `net/http` router. **UI**: `next` 16.4.5, `react`/`react-dom` 19.3.1, `typescript` 5.9.3 (not 7.x: Next.js type checking targets 5.x), no CSS or UI library. **Toolchain**: `go 1.26.0` + `toolchain go1.26.4`; `web/.nvmrc` 24.18.0; `package-lock.json` with `npm ci`. **Ports and commands**: Go API on `127.0.0.1:8080`, Next.js on `3000` (`BACKEND_URL` overrides the target); `go run ./cmd/initenv` (writes missing `.env` values), `go run ./cmd/server`, `go run ./cmd/example` (defines the example agent through the API), `go test ./...`, `npm ci && npm run build && npm start`. **Values (D85)**: session 12 h; SSE heartbeat 15 s (D71); 4 run workers; approval-expiry sweep every minute; tool connect timeout 30 s and TLS handshake 15 s inside the 2 min call limit; request body limit 1 MB; task and system prompt at most 20,000 characters; rejection note at most 2,000 characters; secret values at most 4,096 bytes. **Behaviour details**: a provider 401 message is replaced by a generic text because providers quote part of the key (R7); Next.js compression is off so SSE is not buffered (D68). | Delegated by the author (D85, D119, D121). |
+| D124 | 2026-11-05 | Decision on the first code review (`docs/reviews/2026-11-04-code-1/`, F01–F19): fix the high findings (F01, F02) and every medium finding **except F06**; F06 (text after `run_finished`) and F19 (unknown usage shown as zero) are not fixed now. F04 is already fixed (`919d85e`). The fix plan is reviewed by Codex before coding (`docs/reviews/2026-11-05-fix-plan-1/`). **Amended after that review (author, 2026-11-05): F06 is fixed too**, because the F16 flush timer alone would write buffered text after `run_finished` more often; F19 stays deferred. The review's other change requests needed no new decision and are applied. | The author's choice; F06 added on Codex's warning. |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -186,52 +187,45 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-Stopped on 2026-11-04 (evening); work resumes on 2026-11-05. All planning
-batches are closed (D1–D123).
+Updated on 2026-11-05. All planning batches are closed (D1–D124).
 
-**Done and committed (not pushed):** `9382ecd` Go backend and tests,
-`6d40b37` Next.js UI, `4eaf1a5` example agent, README and records. The last
-pushed commit is `6781c55`; the planning commits after it (`5150ae7`,
-`616ed28`, `3bb0474`) are not pushed either.
+**Committed, not pushed:** `9382ecd` backend and tests, `6d40b37` UI,
+`4eaf1a5` example agent, README and records, `919d85e` external `$ref`
+refused, `b7d3b37` review record. The last pushed commit is `6781c55`.
 
-**Verified:** `cd backend; go test ./...` passes (api, auth, crypto,
-provider/openai, provider/anthropic, run, tool; engine tests also with
-`-count=5`); `go vet` clean; `cd web; npm run build` passes; SSE through the
-Next.js proxy checked by hand in production mode (events immediate, heartbeat
-after 15 s); `go run ./cmd/example` created the example tools and agents
-through the API on a local server.
+**Done on 2026-11-05, not committed yet:** the fixes decided in D124 for the
+first code review (`docs/reviews/2026-11-04-code-1/`): F01–F03, F05–F18 (F04
+was `919d85e`; F19 deferred). The fix plan was reviewed by Codex first
+(`docs/reviews/2026-11-05-fix-plan-1/`); its change requests are applied.
+Main changes: unbounded run queue with a re-run hand-off (F02, F15); call
+looked up inside the run (F03); Anthropic SDK environment credentials off
+(F05); expiry checked inside every decision, claim and sweep transaction
+(F07); executing calls closed before `run_finished` (F08); credentials
+re-checked in any restoration order, with host matching (F09, F11); expiry for
+calls that start waiting later (F10); agent links kept, rename collisions
+refused (F12, F13); discard marker at start-up (F14); text flush timer and no
+text after `run_finished` (F16, F06); GET attempts committed before each send,
+tool client without connection reuse (F17); status kept when the body read
+fails (F18); `X-Idempotency-Key` refused at save and send time (F01).
+`docs/schema.md` and `AI_USAGE.md` updated.
 
-**Not verified yet:** any real provider call (`DEV_OPENAI_API_KEY` and
-`DEV_ANTHROPIC_API_KEY` in `.env` are empty; the D78 model-ID check returned
-401), SSE in Next.js dev mode, clean-clone setup time.
+**Verified:** `cd backend; go test ./... -count=3` passes; `go vet` and
+`gofmt` clean; `cd web; npm run build` passes. Each new regression test was
+checked against a mutation that undoes its fix: all 15 fail without the fix
+(tests: `internal/run/lifecycle_test.go`, `TestAgentToolLinks`,
+`TestEnvironmentCredentialsIgnored`, `TestClientAttemptBudget`,
+`TestClientRefusesForbiddenHeader`, `TestClientKeepsStatusWhenBodyFails`).
 
-**Fix after the commits:** `919d85e` refuses external `$ref` in tool
-parameter schemas (an automated security review found that the JSON Schema
-library's default loader reads local files; D11). It is not covered by the
-running Codex review and needs its own review before the push (D117).
+**Not verified yet:** any real provider call, SSE in Next.js dev mode,
+clean-clone setup time.
 
-**Push is waiting for the author's decisions on the D117 review.** The Codex
-review of `3bb0474..4eaf1a5` is in `docs/reviews/2026-11-04-code-1/answer.md`:
-19 findings (F01–F19), all marked by Codex as restoring an agreed contract (no
-new decision). Two high: F01 `X-Idempotency-Key` is not forbidden (Go may
-replay a POST, D94); F02 a run can be left `running` without a worker when an
-approval arrives while the previous worker is exiting (R4). F04 is already
-fixed by `919d85e`. The rest are medium/low (cross-team call state in a `409`,
-an Anthropic environment bearer token, text after `run_finished`, expiry not
-checked at decision/claim, cancellation of executing writes, credential
-restoration order, missing expiry after a key change, host match on secret
-replacement, deleted-tool links on agent update, tool rename collisions,
-discard marker after restart, queue overflow, text flush timer, GET retry
-budget across restarts, status kept when a body read fails, unknown usage
-shown as zero in the UI).
-
-To resume on 2026-11-05:
+To resume:
 
 1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
    `git status`, `git log origin/main..HEAD`.
-2. Ask the author to decide on F01–F19 (summary given on 2026-11-04); record
-   the decisions here and in `AI_USAGE.md`; fix with regression tests; review
-   the fixes and `919d85e` (D117); push.
+2. Commit the fixes when the author asks; Codex code review of the fixes and
+   `919d85e` (D117, `docs/reviews/<date>-code-2/`); the author decides on its
+   findings; push.
 3. Author's inputs: an OpenAI key (in `.env` as `DEV_OPENAI_API_KEY` for the
    agent's checks, or entered in the UI, D18); the public repository
    `vodafone-case-sandbox` with `examples/dependency-check/package.json` at
@@ -241,8 +235,8 @@ To resume on 2026-11-05:
    OpenAI run of the read-only agent; then the full run with approval and a
    real issue (D110).
 5. Rest of the schedule (D112): SSE check in dev mode; Anthropic live run;
-   `DESIGN.md`; recorded run in `examples/`; D95 limit review; clean-clone
-   setup timing (D114).
+   `DESIGN.md` (include F19 as a known limitation if still open); recorded run
+   in `examples/`; D95 limit review; clean-clone setup timing (D114).
 
 Deadline 2026-11-09; budget cap USD 5 (top of this file). Keys go in the
 git-ignored `.env` (`DEV_OPENAI_API_KEY`, `DEV_ANTHROPIC_API_KEY`) for the

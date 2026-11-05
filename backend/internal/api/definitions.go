@@ -202,10 +202,19 @@ func setAgentTools(ctx context.Context, tx *sql.Tx, agentID, teamID int64, ids [
 		}
 		names[name] = true
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM agent_tools WHERE agent_id = ?", agentID); err != nil {
-		return err
+	// Only removed links are deleted and only new ones inserted: a retained
+	// link to a deleted tool stays as it is (D46).
+	for id := range existing {
+		if !seen[id] {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM agent_tools WHERE agent_id = ? AND tool_id = ?", agentID, id); err != nil {
+				return err
+			}
+		}
 	}
 	for id := range seen {
+		if existing[id] {
+			continue
+		}
 		if _, err := tx.ExecContext(ctx, "INSERT INTO agent_tools (agent_id, tool_id, team_id) VALUES (?, ?, ?)", agentID, id, teamID); err != nil {
 			return err
 		}
@@ -481,26 +490,44 @@ func (s *Server) updateTool(w http.ResponseWriter, r *http.Request, u auth.User)
 	if err != nil {
 		return err
 	}
-	owner, deleted, err := ownedRow(r.Context(), s.DB.W, "tools", id, u.TeamID)
-	if err != nil {
-		return err
-	}
-	if owner != u.ID {
-		return forbidden("only the owner can change this tool; clone it to make your own copy")
-	}
-	if deleted {
-		return conflict("this tool is deleted")
-	}
 	d, err := readToolDef(r)
 	if err != nil {
 		return err
 	}
 	headers, _ := json.Marshal(d.Headers)
-	// Past runs keep their snapshot (D25); only new runs see the change.
-	if _, err := s.DB.W.ExecContext(r.Context(), `UPDATE tools SET name = ?, description = ?, method = ?, url_template = ?,
-		headers_template = ?, body_template = ?, params_schema = ?, requires_approval = ?, updated_at = ?
-		WHERE id = ? AND owner_id = ?`, d.Name, d.Description, d.Method, d.URLTemplate, string(headers), d.BodyTemplate,
-		string(d.ParamsSchema), d.RequiresApproval, db.Now(), id, u.ID); err != nil {
+	err = s.tx(r, func(tx *sql.Tx) error {
+		owner, deleted, err := ownedRow(r.Context(), tx, "tools", id, u.TeamID)
+		if err != nil {
+			return err
+		}
+		if owner != u.ID {
+			return forbidden("only the owner can change this tool; clone it to make your own copy")
+		}
+		if deleted {
+			return conflict("this tool is deleted")
+		}
+		// D49: the new name must stay unique in every agent the tool is
+		// linked to, counting every other linked tool, deleted ones included.
+		var agent string
+		err = tx.QueryRowContext(r.Context(), `SELECT a.name FROM agent_tools mine
+			JOIN agent_tools other ON other.agent_id = mine.agent_id AND other.tool_id != mine.tool_id
+			JOIN tools t ON t.id = other.tool_id
+			JOIN agents a ON a.id = mine.agent_id
+			WHERE mine.tool_id = ? AND t.name = ? LIMIT 1`, id, d.Name).Scan(&agent)
+		if err == nil {
+			return conflict("agent " + agent + " already has a tool named " + d.Name + "; tool names must be unique within an agent")
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		// Past runs keep their snapshot (D25); only new runs see the change.
+		_, err = tx.ExecContext(r.Context(), `UPDATE tools SET name = ?, description = ?, method = ?, url_template = ?,
+			headers_template = ?, body_template = ?, params_schema = ?, requires_approval = ?, updated_at = ?
+			WHERE id = ? AND owner_id = ?`, d.Name, d.Description, d.Method, d.URLTemplate, string(headers), d.BodyTemplate,
+			string(d.ParamsSchema), d.RequiresApproval, db.Now(), id, u.ID)
+		return err
+	})
+	if err != nil {
 		return err
 	}
 	t, err := s.loadTool(r.Context(), s.DB.W, id, u.TeamID)

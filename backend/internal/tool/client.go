@@ -22,6 +22,7 @@ import (
 
 // Limits (D74, D80). The 128 KB model limit is reviewed before delivery (D95).
 const (
+	GetAttempts      = 2 // a GET is retried once (D91); other methods are sent at most once (D63)
 	CallTimeout      = 2 * time.Minute
 	MaxResponseBytes = 10 << 20  // read from the network
 	MaxModelBytes    = 128 << 10 // sent to the model and stored
@@ -91,9 +92,10 @@ func newClient(check func(netip.AddrPort) error, redirect func(string) string, t
 		TLSClientConfig:       tlsCfg,
 		TLSHandshakeTimeout:   15 * time.Second,
 		ResponseHeaderTimeout: CallTimeout,
-		MaxIdleConns:          10,
-		IdleConnTimeout:       30 * time.Second,
-		ForceAttemptHTTP2:     true,
+		// No connection reuse: Go silently re-sends a GET when a reused
+		// connection fails, which would exceed the counted attempts (D91).
+		DisableKeepAlives: true,
+		ForceAttemptHTTP2: true,
 	}
 	return &Client{http: &http.Client{
 		Transport: transport,
@@ -140,9 +142,12 @@ func checkAddress(ap netip.AddrPort) error {
 }
 
 // Do sends the request. secrets maps each referenced secret name to the
-// starter's secret (D32); a missing secret or a host mismatch fails before
-// anything is sent. GET is retried once on network errors, 5xx and 429 (D91).
-func (c *Client) Do(ctx context.Context, r Request, secrets map[string]Secret) (Result, error) {
+// starter's secret (D32); a missing secret, a host mismatch or a forbidden
+// header fails before anything is sent. A GET is retried once on network
+// errors, 5xx and 429 (D91), within maxAttempts, the attempts still left for
+// the call. onAttempt runs before each send and must record the attempt
+// durably; if it fails, nothing more is sent (D94).
+func (c *Client) Do(ctx context.Context, r Request, secrets map[string]Secret, maxAttempts int, onAttempt func() error) (Result, error) {
 	u, err := url.Parse(r.URL)
 	if err != nil || u.Scheme != "https" {
 		return Result{}, &Failure{Code: "address_refused", Msg: "invalid URL"}
@@ -154,6 +159,9 @@ func (c *Client) Do(ctx context.Context, r Request, secrets map[string]Secret) (
 
 	var values []string
 	for _, h := range r.Headers {
+		if ForbiddenHeader(h.Name) {
+			return Result{}, &Failure{Code: "address_refused", Msg: "header " + http.CanonicalHeaderKey(h.Name) + " may not be set by a tool"}
+		}
 		if h.Secret == "" {
 			continue
 		}
@@ -170,11 +178,24 @@ func (c *Client) Do(ctx context.Context, r Request, secrets map[string]Secret) (
 
 	attempts := 1
 	if r.Method == http.MethodGet {
-		attempts = 2
+		attempts = GetAttempts
 	}
-	var res Result
+	attempts = min(attempts, maxAttempts)
+	if attempts <= 0 {
+		return Result{}, &Failure{Code: "interrupted", Msg: "the request was interrupted and has no attempts left"}
+	}
+	var res, last Result // last: the most recent HTTP response, if any
 	for i := 0; i < attempts; i++ {
+		if aerr := onAttempt(); aerr != nil {
+			if i == 0 {
+				return Result{}, &Failure{Code: "interrupted", Msg: "the attempt could not be recorded; nothing was sent"}
+			}
+			break // keep the previous attempt's outcome
+		}
 		res, err = c.once(ctx, r, secrets)
+		if res.Status != 0 {
+			last = res
+		}
 		retryable := false
 		var f *Failure
 		if errors.As(err, &f) {
@@ -186,6 +207,12 @@ func (c *Client) Do(ctx context.Context, r Request, secrets map[string]Secret) (
 			break
 		}
 	}
+	if last.Status != 0 {
+		// A response arrived (D99): it goes to the model even if a later
+		// attempt or the body read failed.
+		last.Text = Truncate(Mask(last.Text, values), MaxModelBytes, -1)
+		return last, nil
+	}
 	if err != nil {
 		var f *Failure
 		if errors.As(err, &f) {
@@ -193,9 +220,7 @@ func (c *Client) Do(ctx context.Context, r Request, secrets map[string]Secret) (
 		}
 		return Result{}, err
 	}
-	res.Text = Mask(res.Text, values)
-	res.Text = Truncate(res.Text, MaxModelBytes, -1)
-	return res, nil
+	return last, nil
 }
 
 func (c *Client) once(ctx context.Context, r Request, secrets map[string]Secret) (Result, error) {
@@ -242,10 +267,14 @@ func (c *Client) once(ctx context.Context, r Request, secrets map[string]Secret)
 	defer resp.Body.Close()
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))
-	if err != nil && len(data) == 0 {
-		return Result{}, &Failure{Code: "network", Msg: "reading the response failed: " + err.Error(), MaySent: true}
+	res := Result{Status: resp.StatusCode, Text: formatResponse(resp, data)}
+	if err != nil {
+		// The status is known; the body is incomplete (D99). A GET may still
+		// be retried as a network error.
+		res.Text += "\n[reading the response body failed: " + err.Error() + "]"
+		return res, &Failure{Code: "network", Msg: "reading the response failed: " + err.Error(), MaySent: true}
 	}
-	return Result{Status: resp.StatusCode, Text: formatResponse(resp, data)}, nil
+	return res, nil
 }
 
 // formatResponse is what the model sees: status line, content type and body.

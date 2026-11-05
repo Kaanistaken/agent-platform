@@ -103,7 +103,8 @@ export default function RunPage() {
       case "tool_call_status": {
         const c = calls.get(d.id);
         if (c) Object.assign(c, { status: d.status, reason_code: d.reason_code, note: d.note },
-          d.approval_revision ? { approval_revision: d.approval_revision } : {});
+          d.approval_revision ? { approval_revision: d.approval_revision } : {},
+          d.approval_expires_at ? { approval_expires_at: d.approval_expires_at } : {});
         break;
       }
       case "tool_result": {

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"log"
 	"math/rand/v2"
+	"net/http"
 	"sync"
 	"time"
 
@@ -60,7 +61,7 @@ const (
 // Executor sends a rendered tool request. *tool.Client implements it; tests
 // may pass a fake.
 type Executor interface {
-	Do(ctx context.Context, r tool.Request, secrets map[string]tool.Secret) (tool.Result, error)
+	Do(ctx context.Context, r tool.Request, secrets map[string]tool.Secret, maxAttempts int, onAttempt func() error) (tool.Result, error)
 }
 
 // Engine runs agent runs.
@@ -75,13 +76,17 @@ type Engine struct {
 	Now   func() time.Time
 	Sleep func(ctx context.Context, d time.Duration) error
 
-	queue  chan int64
-	mu     sync.Mutex
-	active map[int64]context.CancelFunc
-	queued map[int64]bool
-	wg     sync.WaitGroup
-	base   context.Context
-	stop   context.CancelFunc
+	// Work queue: an unbounded FIFO, so no run is ever dropped (R4). wake has
+	// one slot; a worker that takes work re-signals while more is queued.
+	mu      sync.Mutex
+	pending []int64
+	queued  map[int64]bool               // in pending
+	active  map[int64]context.CancelFunc // being processed by a worker
+	again   map[int64]bool               // enqueued while active: process once more
+	wake    chan struct{}
+	wg      sync.WaitGroup
+	base    context.Context
+	stop    context.CancelFunc
 }
 
 // New creates an engine. Call Start to recover and begin processing.
@@ -90,9 +95,10 @@ func New(d *db.DB, box *crypto.Box, providers map[string]provider.Provider, tool
 		DB: d, Box: box, Providers: providers, Tools: tools, Hub: NewHub(),
 		Now:    time.Now,
 		Sleep:  sleepCtx,
-		queue:  make(chan int64, 1024),
 		active: map[int64]context.CancelFunc{},
 		queued: map[int64]bool{},
+		again:  map[int64]bool{},
+		wake:   make(chan struct{}, 1),
 	}
 }
 
@@ -130,51 +136,83 @@ func (e *Engine) Stop() {
 	e.wg.Wait()
 }
 
-// Enqueue asks a worker to process the run. Duplicates are ignored.
+// Enqueue asks a worker to process the run. Duplicates are ignored. A run that
+// a worker is processing right now is processed once more when that worker
+// lets go of it, so a change made while the worker is exiting is not lost.
 func (e *Engine) Enqueue(runID int64) {
 	e.mu.Lock()
-	if e.queued[runID] {
-		e.mu.Unlock()
-		return
+	if _, busy := e.active[runID]; busy {
+		e.again[runID] = true
+	} else if !e.queued[runID] {
+		e.queued[runID] = true
+		e.pending = append(e.pending, runID)
 	}
-	e.queued[runID] = true
 	e.mu.Unlock()
+	e.signal()
+}
+
+func (e *Engine) signal() {
 	select {
-	case e.queue <- runID:
+	case e.wake <- struct{}{}:
 	default:
-		// The queue is full; the run stays queued in the database and is
-		// picked up by the next start-up scan.
-		e.mu.Lock()
-		delete(e.queued, runID)
-		e.mu.Unlock()
-		log.Printf("run %d: queue full", runID)
 	}
+}
+
+// claim takes the next queued run that no worker is processing and registers
+// it as active.
+func (e *Engine) claim() (int64, context.Context, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for len(e.pending) > 0 {
+		id := e.pending[0]
+		e.pending = e.pending[1:]
+		delete(e.queued, id)
+		if _, busy := e.active[id]; busy {
+			e.again[id] = true
+			continue
+		}
+		ctx, cancel := context.WithCancel(e.base)
+		e.active[id] = cancel
+		if len(e.pending) > 0 {
+			e.signal() // wake another worker for the rest
+		}
+		return id, ctx, true
+	}
+	return 0, nil, false
+}
+
+// release is called by the worker after process returns. If the run was
+// enqueued meanwhile, the worker keeps it and gets a fresh context to process
+// it again; otherwise the run stops being active.
+func (e *Engine) release(id int64) (context.Context, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.active[id]()
+	if e.again[id] && e.base.Err() == nil {
+		delete(e.again, id)
+		ctx, cancel := context.WithCancel(e.base)
+		e.active[id] = cancel
+		return ctx, true
+	}
+	delete(e.again, id)
+	delete(e.active, id)
+	return nil, false
 }
 
 func (e *Engine) worker() {
 	defer e.wg.Done()
-	for {
-		select {
-		case <-e.base.Done():
-			return
-		case id := <-e.queue:
-			e.mu.Lock()
-			delete(e.queued, id)
-			if _, busy := e.active[id]; busy {
-				// Another worker has it; it will see the new state.
-				e.mu.Unlock()
-				continue
+	for e.base.Err() == nil {
+		id, ctx, ok := e.claim()
+		if !ok {
+			select {
+			case <-e.base.Done():
+			case <-e.wake:
 			}
-			ctx, cancel := context.WithCancel(e.base)
-			e.active[id] = cancel
-			e.mu.Unlock()
-
+			continue
+		}
+		for ok {
 			e.process(ctx, id)
-
-			e.mu.Lock()
-			delete(e.active, id)
-			e.mu.Unlock()
-			cancel()
+			ctx, ok = e.release(id)
 		}
 	}
 }
@@ -398,6 +436,27 @@ func finishTx(ctx context.Context, tx *sql.Tx, runID int64, status, code, msg, o
 	if _, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = 'rejected', reason_code = ?, updated_at = ?
 		WHERE run_id = ? AND status IN ('pending_approval', 'approved', 'invalidated')`, reason, db.Format(now), runID); err != nil {
 		return false, err
+	}
+	// A call still being sent is closed here, before the final event, so the
+	// record never shows it executing forever; a late HTTP completion cannot
+	// overwrite it (completeCall only updates executing calls). A write may
+	// have had its effect (D63, D66).
+	executing, _, err := runCalls(ctx, tx, runID, TcExecuting)
+	if err != nil {
+		return false, err
+	}
+	for _, c := range executing {
+		st := TcOutcomeUnknown
+		if c.Request.Method == http.MethodGet {
+			st = TcFailed
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = ?, reason_code = 'run_cancelled', finished_at = ?,
+			updated_at = ? WHERE id = ? AND status = 'executing'`, st, db.Format(now), db.Format(now), c.ID); err != nil {
+			return false, err
+		}
+		if err := emit(ctx, tx, runID, EvToolCallStatus, map[string]any{"id": c.ID, "status": st, "reason_code": "run_cancelled"}); err != nil {
+			return false, err
+		}
 	}
 	payload := map[string]any{"status": status, "error_code": code, "error_message": msg}
 	if output != "" {

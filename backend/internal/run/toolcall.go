@@ -56,8 +56,14 @@ func (e *Engine) executeCall(ctx context.Context, r *runState, c *callRow) error
 	// model key and every secret the request needs.
 	secrets := map[string]tool.Secret{}
 	var values []string
-	claimed := false
+	claimed, expired := false, false
+	budget := 1 // a write is sent at most once (D63)
 	err := e.withTx(context.Background(), r.ID, func(tx *sql.Tx) error {
+		// An expired request is never sent, even before the sweep runs (D90).
+		var err error
+		if expired, err = expireTx(ctx, tx, r.ID, e.Now()); err != nil || expired {
+			return err
+		}
 		now := db.Format(e.Now())
 		var keyCount int
 		if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM user_model_keys WHERE user_id = ? AND provider = ?",
@@ -81,18 +87,30 @@ func (e *Engine) executeCall(ctx context.Context, r *runState, c *callRow) error
 			values = append(values, s.Value)
 		}
 		if reason != "" {
-			res, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = 'invalidated', reason_code = ?, updated_at = ?
-				WHERE id = ? AND status = 'approved'`, reason, now, c.ID)
+			// The call now waits for the starter, so it gets an expiry if it
+			// has none yet (D90).
+			res, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = 'invalidated', reason_code = ?,
+				approval_expires_at = COALESCE(approval_expires_at, ?), updated_at = ? WHERE id = ? AND status = 'approved'`,
+				reason, db.Format(ApprovalExpiry(e.Now())), now, c.ID)
 			if err != nil {
 				return err
 			}
 			if n, _ := res.RowsAffected(); n == 1 {
-				return emit(ctx, tx, r.ID, EvToolCallStatus, map[string]any{"id": c.ID, "status": TcInvalidated, "reason_code": reason})
+				return emit(ctx, tx, r.ID, EvToolCallStatus, map[string]any{"id": c.ID, "status": TcInvalidated,
+					"reason_code": reason, "approval_expires_at": expiresAt(ctx, tx, c.ID)})
 			}
 			return nil
 		}
-		res, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = 'executing', started_at = ?, updated_at = ?,
-			attempt_count = attempt_count + 1 WHERE id = ? AND status = 'approved'`, now, now, c.ID)
+		// D91: a GET has two attempts in total, counted across restarts.
+		if c.Request.Method == http.MethodGet {
+			var used int
+			if err := tx.QueryRowContext(ctx, "SELECT attempt_count FROM tool_calls WHERE id = ?", c.ID).Scan(&used); err != nil {
+				return err
+			}
+			budget = tool.GetAttempts - used
+		}
+		res, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = 'executing', started_at = ?, updated_at = ?
+			WHERE id = ? AND status = 'approved'`, now, now, c.ID)
 		if err != nil {
 			return err
 		}
@@ -102,11 +120,24 @@ func (e *Engine) executeCall(ctx context.Context, r *runState, c *callRow) error
 		claimed = true
 		return emit(ctx, tx, r.ID, EvToolCallStatus, map[string]any{"id": c.ID, "status": TcExecuting})
 	})
+	if err == nil && expired {
+		return errStop
+	}
 	if err != nil || !claimed {
 		return err
 	}
+	if budget <= 0 {
+		return e.completeCall(r.ID, c, TcFailed, "interrupted",
+			"Error: the request was not completed: it was interrupted and has no attempts left.", 0)
+	}
 
-	res, err := e.Tools.Do(ctx, c.Request, secrets)
+	// Each send is recorded before it happens, so a restart never grants
+	// more attempts than D91 allows (D94).
+	onAttempt := func() error {
+		_, err := e.DB.W.ExecContext(context.Background(), "UPDATE tool_calls SET attempt_count = attempt_count + 1 WHERE id = ?", c.ID)
+		return err
+	}
+	res, err := e.Tools.Do(ctx, c.Request, secrets, budget, onAttempt)
 	if err == nil {
 		return e.completeCall(r.ID, c, TcSucceeded, "", res.Text, res.Status)
 	}
@@ -127,6 +158,16 @@ func (e *Engine) executeCall(ctx context.Context, r *runState, c *callRow) error
 				"Tell the user; do not assume it succeeded.", 0)
 	}
 	return e.completeCall(r.ID, c, TcFailed, reasonFor(f.Code), "Error: the request was not completed: "+f.Msg, 0)
+}
+
+// expiresAt reads a call's approval expiry for an event payload (nil if none).
+func expiresAt(ctx context.Context, tx *sql.Tx, callID int64) any {
+	var v sql.NullString
+	tx.QueryRowContext(ctx, "SELECT approval_expires_at FROM tool_calls WHERE id = ?", callID).Scan(&v)
+	if v.Valid {
+		return v.String
+	}
+	return nil
 }
 
 func reasonFor(code string) string {

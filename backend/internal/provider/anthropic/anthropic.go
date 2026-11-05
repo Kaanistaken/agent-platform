@@ -34,7 +34,11 @@ func (a *Adapter) Stream(ctx context.Context, req provider.Request, cb provider.
 		return provider.Result{}, &provider.Error{Class: provider.Permanent, Code: "internal", Msg: err.Error()}
 	}
 	opts := append([]option.RequestOption{
-		option.WithAPIKey(req.APIKey), // explicit: never an environment key (D12)
+		// Only the starter's key: the SDK's environment credentials
+		// (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, profiles, base URL) are
+		// switched off, so no second credential is sent (R7, D12).
+		option.WithoutEnvironmentDefaults(),
+		option.WithAPIKey(req.APIKey),
 		option.WithMaxRetries(0),
 		option.WithJSONSet("model", req.Model),
 		option.WithJSONSet("max_tokens", req.MaxOutputTokens),

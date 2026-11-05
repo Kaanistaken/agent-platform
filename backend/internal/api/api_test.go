@@ -28,7 +28,7 @@ const origin = "http://localhost:3000"
 
 type nopExec struct{}
 
-func (nopExec) Do(context.Context, tool.Request, map[string]tool.Secret) (tool.Result, error) {
+func (nopExec) Do(context.Context, tool.Request, map[string]tool.Secret, int, func() error) (tool.Result, error) {
 	return tool.Result{Status: 200, Text: "HTTP 200 OK\n\n{}"}, nil
 }
 
@@ -332,4 +332,51 @@ func waitRun(t *testing.T, c *client, runID int64, want string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("run %d did not reach %s", runID, want)
+}
+
+// D46, D49: an agent update keeps a retained link to a deleted tool, and a
+// tool rename may not duplicate a name inside an agent it is linked to.
+func TestAgentToolLinks(t *testing.T) {
+	a := newAPI(t)
+	alice := a.login("alice")
+	keep := alice.id("POST", "/api/tools", readTool)
+	other := map[string]any{}
+	for k, v := range readTool {
+		other[k] = v
+	}
+	other["name"] = "list_files"
+	second := alice.id("POST", "/api/tools", other)
+	agentID := alice.id("POST", "/api/agents", map[string]any{"name": "dep-check", "system_prompt": "s",
+		"provider": "openai", "model": "gpt-6-luna", "tool_ids": []int64{keep, second}})
+
+	// F13: renaming list_files to read_file would give the agent two tools
+	// with one name.
+	other["name"] = "read_file"
+	if code, body := alice.do("PUT", fmt.Sprintf("/api/tools/%d", second), other); code != 409 {
+		t.Fatalf("rename collision: %d %s", code, body)
+	}
+	var name string
+	a.db.W.QueryRow("SELECT name FROM tools WHERE id = ?", second).Scan(&name)
+	if name != "list_files" {
+		t.Fatalf("tool renamed anyway: %s", name)
+	}
+
+	// F12: the deleted tool stays linked when the agent is updated with it.
+	if code, _ := alice.do("DELETE", fmt.Sprintf("/api/tools/%d", keep), nil); code != 204 {
+		t.Fatalf("delete tool: %d", code)
+	}
+	update := map[string]any{"name": "dep-check 2", "system_prompt": "s", "provider": "openai", "model": "gpt-6-luna",
+		"tool_ids": []int64{keep, second}}
+	if code, body := alice.do("PUT", fmt.Sprintf("/api/agents/%d", agentID), update); code != 200 {
+		t.Fatalf("update with retained deleted tool: %d %s", code, body)
+	}
+	var links int
+	a.db.W.QueryRow("SELECT COUNT(*) FROM agent_tools WHERE agent_id = ? AND tool_id = ?", agentID, keep).Scan(&links)
+	if links != 1 {
+		t.Fatal("the retained link to the deleted tool is gone")
+	}
+	// A deleted tool's name still counts (F13): renaming to it is refused.
+	if code, _ := alice.do("PUT", fmt.Sprintf("/api/tools/%d", second), other); code != 409 {
+		t.Fatalf("rename to a deleted linked tool's name: %d", code)
+	}
 }

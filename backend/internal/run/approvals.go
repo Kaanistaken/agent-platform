@@ -24,18 +24,47 @@ func runAccess(ctx context.Context, tx *sql.Tx, runID, teamID int64) (status str
 	return status, startedBy, err
 }
 
-func callState(ctx context.Context, tx *sql.Tx, callID int64) map[string]any {
+// callState returns a call of the run for a 409 body. A call that is not in
+// the run is not found, like another team's run (D39).
+func callState(ctx context.Context, tx *sql.Tx, runID, callID int64) (map[string]any, error) {
 	var status string
 	var rev int
 	var reason sql.NullString
-	tx.QueryRowContext(ctx, "SELECT status, approval_revision, reason_code FROM tool_calls WHERE id = ?", callID).Scan(&status, &rev, &reason)
-	return map[string]any{"status": status, "approval_revision": rev, "reason_code": reason.String}
+	err := tx.QueryRowContext(ctx, "SELECT status, approval_revision, reason_code FROM tool_calls WHERE id = ? AND run_id = ?",
+		callID, runID).Scan(&status, &rev, &reason)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"status": status, "approval_revision": rev, "reason_code": reason.String}, nil
+}
+
+// errExpired is returned to the starter who decides on a request that has
+// already expired; the decision's transaction cancelled the run (D90).
+var errExpired = &ConflictError{"the approval request expired; the run was cancelled",
+	map[string]string{"status": TcRejected, "reason_code": "approval_expired"}}
+
+// expireTx cancels the run if one of its open calls waited past its approval
+// expiry (D90). It runs inside every transaction that would act on such a
+// call, so an expired request is never approved, rejected or sent, whether or
+// not the sweep has run yet.
+func expireTx(ctx context.Context, tx *sql.Tx, runID int64, now time.Time) (bool, error) {
+	var n int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM tool_calls WHERE run_id = ?
+		AND status IN ('pending_approval', 'approved', 'invalidated') AND approval_expires_at IS NOT NULL
+		AND approval_expires_at <= ?`, runID, db.Format(now)).Scan(&n); err != nil || n == 0 {
+		return false, err
+	}
+	return finishTx(ctx, tx, runID, StCancelled, "approval_expired", "the approval request expired without a decision", "", now)
 }
 
 // Approve approves a pending call. Only the run's starter may decide (D26), and
 // only for the revision they saw (D55); the conditional update makes exactly
 // one of competing decisions win (D21).
 func (e *Engine) Approve(ctx context.Context, userID, teamID, runID, callID int64, revision int) error {
+	expired := false
 	err := e.withTx(ctx, runID, func(tx *sql.Tx) error {
 		_, startedBy, err := runAccess(ctx, tx, runID, teamID)
 		if err != nil {
@@ -43,6 +72,13 @@ func (e *Engine) Approve(ctx context.Context, userID, teamID, runID, callID int6
 		}
 		if startedBy != userID {
 			return ErrForbidden
+		}
+		state, err := callState(ctx, tx, runID, callID)
+		if err != nil {
+			return err
+		}
+		if expired, err = expireTx(ctx, tx, runID, e.Now()); err != nil || expired {
+			return err
 		}
 		now := db.Format(e.Now())
 		res, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = 'approved', decided_by = ?, decided_at = ?, updated_at = ?
@@ -53,7 +89,7 @@ func (e *Engine) Approve(ctx context.Context, userID, teamID, runID, callID int6
 			return err
 		}
 		if n, _ := res.RowsAffected(); n != 1 {
-			return &ConflictError{"this approval is no longer pending (or the page is out of date)", callState(ctx, tx, callID)}
+			return &ConflictError{"this approval is no longer pending (or the page is out of date)", state}
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE runs SET status = 'running' WHERE id = ?", runID); err != nil {
 			return err
@@ -63,6 +99,10 @@ func (e *Engine) Approve(ctx context.Context, userID, teamID, runID, callID int6
 		}
 		return emit(ctx, tx, runID, EvRunStatus, map[string]string{"status": StRunning})
 	})
+	if err == nil && expired {
+		e.cancelActive(runID)
+		return errExpired
+	}
 	if err == nil {
 		e.Enqueue(runID)
 	}
@@ -76,6 +116,7 @@ func (e *Engine) Reject(ctx context.Context, userID, teamID, runID, callID int64
 	if len(note) > 2000 {
 		note = note[:2000]
 	}
+	expired := false
 	err := e.withTx(ctx, runID, func(tx *sql.Tx) error {
 		_, startedBy, err := runAccess(ctx, tx, runID, teamID)
 		if err != nil {
@@ -83,6 +124,13 @@ func (e *Engine) Reject(ctx context.Context, userID, teamID, runID, callID int64
 		}
 		if startedBy != userID {
 			return ErrForbidden
+		}
+		state, err := callState(ctx, tx, runID, callID)
+		if err != nil {
+			return err
+		}
+		if expired, err = expireTx(ctx, tx, runID, e.Now()); err != nil || expired {
+			return err
 		}
 		now := db.Format(e.Now())
 		res, err := tx.ExecContext(ctx, `UPDATE tool_calls SET status = 'rejected', reason_code = 'rejected_by_starter',
@@ -94,7 +142,7 @@ func (e *Engine) Reject(ctx context.Context, userID, teamID, runID, callID int64
 			return err
 		}
 		if n, _ := res.RowsAffected(); n != 1 {
-			return &ConflictError{"this approval is no longer pending (or the page is out of date)", callState(ctx, tx, callID)}
+			return &ConflictError{"this approval is no longer pending (or the page is out of date)", state}
 		}
 		var providerCallID string
 		if err := tx.QueryRowContext(ctx, "SELECT provider_call_id FROM tool_calls WHERE id = ?", callID).Scan(&providerCallID); err != nil {
@@ -116,6 +164,10 @@ func (e *Engine) Reject(ctx context.Context, userID, teamID, runID, callID int64
 		}
 		return emit(ctx, tx, runID, EvRunStatus, map[string]string{"status": StRunning})
 	})
+	if err == nil && expired {
+		e.cancelActive(runID)
+		return errExpired
+	}
 	if err == nil {
 		e.Enqueue(runID)
 	}
@@ -157,6 +209,41 @@ func (e *Engine) Cancel(ctx context.Context, userID, teamID int64, isLead bool, 
 // recover runs once at start-up, before the workers (D62, D84).
 func (e *Engine) recover(ctx context.Context) error {
 	now := db.Format(e.Now())
+	// An attempt that streamed text but never completed, whether the server
+	// crashed or stopped, is marked discarded in the stream before the run
+	// resumes, so its partial text is not shown as the answer (D62, D92).
+	if err := e.withTx(ctx, 0, func(tx *sql.Tx) error {
+		rows, err := tx.QueryContext(ctx, `SELECT mc.id, mc.run_id, mc.attempt FROM model_calls mc JOIN runs r ON r.id = mc.run_id
+			WHERE r.status NOT IN ('succeeded', 'failed', 'cancelled')
+			AND (mc.finished_at IS NULL OR mc.outcome = 'failed' AND mc.error_code = 'interrupted')
+			AND EXISTS (SELECT 1 FROM run_events ev WHERE ev.run_id = mc.run_id AND ev.type = 'text_delta'
+				AND json_extract(ev.payload, '$.model_call_id') = mc.id)
+			AND NOT EXISTS (SELECT 1 FROM run_events ev WHERE ev.run_id = mc.run_id AND ev.type = 'attempt_discarded'
+				AND json_extract(ev.payload, '$.model_call_id') = mc.id)
+			ORDER BY mc.id`)
+		if err != nil {
+			return err
+		}
+		type attempt struct{ id, runID, n int64 }
+		var found []attempt
+		for rows.Next() {
+			var a attempt
+			if err := rows.Scan(&a.id, &a.runID, &a.n); err != nil {
+				rows.Close()
+				return err
+			}
+			found = append(found, a)
+		}
+		rows.Close()
+		for _, a := range found {
+			if err := emit(ctx, tx, a.runID, EvAttemptDiscarded, map[string]any{"model_call_id": a.id, "attempt": a.n}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 	// Model calls left in flight: usage reported before the crash is kept (D75).
 	if _, err := e.DB.W.ExecContext(ctx, `UPDATE model_calls SET outcome = 'interrupted', finished_at = ?,
 		usage_status = CASE WHEN input_tokens IS NULL THEN 'unavailable' ELSE 'partial' END
@@ -251,7 +338,18 @@ func (e *Engine) expireApprovals(ctx context.Context) {
 	}
 	rows.Close()
 	for _, id := range ids {
-		if e.finish(ctx, id, StCancelled, "approval_expired", "the approval request expired without a decision", "") {
+		// The candidate is re-checked inside the cancelling transaction: it
+		// may have been decided or claimed since the query.
+		expired := false
+		err := e.withTx(ctx, id, func(tx *sql.Tx) error {
+			var err error
+			expired, err = expireTx(ctx, tx, id, e.Now())
+			return err
+		})
+		if err != nil {
+			log.Printf("expiry sweep: run %d: %v", id, err)
+		}
+		if expired {
 			e.cancelActive(id)
 		}
 	}
