@@ -86,16 +86,20 @@ func newClient(check func(netip.AddrPort) error, redirect func(string) string, t
 			return dialer.DialContext(ctx, network, redirect(addr))
 		}
 	}
+	// HTTP/1.1 only, without connection reuse: Go's HTTP/2 client re-sends a
+	// request (any method) after some stream errors, and its HTTP/1 client
+	// re-sends a GET when a reused connection fails. Either would send more
+	// than the attempts counted for the call (D63, D91, D94).
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
 	transport := &http.Transport{
 		Proxy:                 nil, // proxy environment variables are ignored (D81)
 		DialContext:           dial,
 		TLSClientConfig:       tlsCfg,
 		TLSHandshakeTimeout:   15 * time.Second,
 		ResponseHeaderTimeout: CallTimeout,
-		// No connection reuse: Go silently re-sends a GET when a reused
-		// connection fails, which would exceed the counted attempts (D91).
-		DisableKeepAlives: true,
-		ForceAttemptHTTP2: true,
+		DisableKeepAlives:     true,
+		Protocols:             protocols,
 	}
 	return &Client{http: &http.Client{
 		Transport: transport,

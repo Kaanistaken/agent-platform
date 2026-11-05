@@ -145,6 +145,11 @@ func TestDecisionOnForeignCall(t *testing.T) {
 	if err := eng.Reject(context.Background(), e.alice, e.alpha, runA, callB, rev, ""); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("reject: %v", err)
 	}
+	// Also when run A's own request has expired: the call is resolved first.
+	eng.Now = func() time.Time { return time.Now().Add(73 * time.Hour) }
+	if err := eng.Approve(context.Background(), e.alice, e.alpha, runA, callB, rev); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("approve on an expired run: %v", err)
+	}
 }
 
 // F07: an expired request cannot be decided or sent, even before the sweep.
@@ -346,11 +351,16 @@ func TestExpiryForLateWaits(t *testing.T) {
 	if expiry() != first {
 		t.Fatal("invalidation moved the expiry")
 	}
+	newID := e.addSecret(e.alice, "GITHUB_TOKEN", "api.github.com", "ghp_new")
+	inTx(t, e, func(tx *sql.Tx) {
+		OnSecretAdded(context.Background(), tx, e.alice, newID, "GITHUB_TOKEN", "api.github.com")
+	})
+	if _, s, _, _ := e.call(runID); s != TcPending || expiry() != first {
+		t.Fatalf("after restoration: %s, expiry %q (was %q)", s, expiry(), first)
+	}
 
 	// A no-approval call (no expiry) still approved when the key is replaced.
 	mustExec(t, e.db.W, "UPDATE tool_calls SET status = 'approved', approval_expires_at = NULL, reason_code = NULL WHERE run_id = ?", runID)
-	newID := e.addSecret(e.alice, "GITHUB_TOKEN", "api.github.com", "ghp_new")
-	mustExec(t, e.db.W, "UPDATE runs SET snapshot = json_set(snapshot, '$.secrets.GITHUB_TOKEN', ?) WHERE id = ?", newID, runID)
 	inTx(t, e, func(tx *sql.Tx) { OnModelKeyChanged(context.Background(), tx, e.alice, "openai", false) })
 	if _, s, _, _ := e.call(runID); s != TcPending || expiry() == "" {
 		t.Fatalf("call %s, expiry %q", s, expiry())
@@ -396,6 +406,8 @@ func TestTextFlushTimer(t *testing.T) {
 	e := newEnv(t)
 	p := &streamThenWait{text: "hello", started: make(chan struct{})}
 	eng := New(e.db, e.box, map[string]provider.Provider{"openai": p}, &fakeExec{})
+	frozen := time.Now()
+	eng.Now = func() time.Time { return frozen } // the delta always falls inside the 250 ms window
 	if err := eng.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}

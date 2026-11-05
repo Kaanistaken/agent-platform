@@ -138,6 +138,7 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D122 | 2026-11-04 | The author left the remaining Codex B5 review points to the agent; the agent's choices: (1) one live OpenAI validation run on Nov 5, counted in D118; (2) the D95 limit review happens on Nov 8 before the setup measurement; (3) each review round's own `prompt.md`/`answer.md` are not re-reviewed — the author checks them for secrets and accuracy — while code fixes are always reviewed (D117); (4) `.gitattributes` with `* text=auto eol=lf`; (5) cost is estimated from recorded tokens (labelled as an estimate) and checked against the provider dashboards; no cost fields in the schema; spend is written here after each live session; (6) the clarifications are adopted: per-day exit criteria and the Nov 5 work order from the Codex B5 answer, security protections built with the slice that uses them, tests written with each slice, a recording rehearsal on Nov 7–8, model IDs verified through the model-list endpoints, the review prompt format, and the clean-setup checklist. (B5 review) | Author's delegation; the choices follow the Codex B5 review. |
 | D123 | 2026-11-04 | Implementation choices made by the agent under D85, D119 and D121 (recorded, not the author's decisions). **Dependencies** (backend): `modernc.org/sqlite` v1.61.1 (D6), `github.com/openai/openai-go/v3` v3.94.0 and `github.com/anthropics/anthropic-sdk-go` v1.84.0 (D9; used for transport, errors and stream parsing only; request bodies set with `option.WithJSONSet` so provider items are sent back verbatim, D96), `golang.org/x/crypto` (bcrypt, D16), `github.com/joho/godotenv` v1.5.1 (`.env` loading), `github.com/santhosh-tekuri/jsonschema/v6` v6.0.3 (tool parameter schemas, R3). No HTTP framework: Go's `net/http` router. **UI**: `next` 16.4.5, `react`/`react-dom` 19.3.1, `typescript` 5.9.3 (not 7.x: Next.js type checking targets 5.x), no CSS or UI library. **Toolchain**: `go 1.26.0` + `toolchain go1.26.4`; `web/.nvmrc` 24.18.0; `package-lock.json` with `npm ci`. **Ports and commands**: Go API on `127.0.0.1:8080`, Next.js on `3000` (`BACKEND_URL` overrides the target); `go run ./cmd/initenv` (writes missing `.env` values), `go run ./cmd/server`, `go run ./cmd/example` (defines the example agent through the API), `go test ./...`, `npm ci && npm run build && npm start`. **Values (D85)**: session 12 h; SSE heartbeat 15 s (D71); 4 run workers; approval-expiry sweep every minute; tool connect timeout 30 s and TLS handshake 15 s inside the 2 min call limit; request body limit 1 MB; task and system prompt at most 20,000 characters; rejection note at most 2,000 characters; secret values at most 4,096 bytes. **Behaviour details**: a provider 401 message is replaced by a generic text because providers quote part of the key (R7); Next.js compression is off so SSE is not buffered (D68). | Delegated by the author (D85, D119, D121). |
 | D124 | 2026-11-05 | Decision on the first code review (`docs/reviews/2026-11-04-code-1/`, F01–F19): fix the high findings (F01, F02) and every medium finding **except F06**; F06 (text after `run_finished`) and F19 (unknown usage shown as zero) are not fixed now. F04 is already fixed (`919d85e`). The fix plan is reviewed by Codex before coding (`docs/reviews/2026-11-05-fix-plan-1/`). **Amended after that review (author, 2026-11-05): F06 is fixed too**, because the F16 flush timer alone would write buffered text after `run_finished` more often; F19 stays deferred. The review's other change requests needed no new decision and are applied. | The author's choice; F06 added on Codex's warning. |
+| D125 | 2026-11-05 | Decision on the second code review (`docs/reviews/2026-11-05-code-2/`): fix everything — F17 (HTTP/2's internal retry can re-send a GET or an approved POST within one counted attempt), N01 (`PUT /tools/{id}` validated the body before authorization: 400 instead of 404/403) — and add the four suggested tests (external `$ref`/`$schema` refused; foreign call on an expired run is 404; expiry kept through restoration; timer test inside the 250 ms window). | The author's choice. |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -191,30 +192,23 @@ Updated on 2026-11-05. All planning batches are closed (D1–D124).
 
 **Committed, not pushed:** `9382ecd` backend and tests, `6d40b37` UI,
 `4eaf1a5` example agent, README and records, `919d85e` external `$ref`
-refused, `b7d3b37` review record. The last pushed commit is `6781c55`.
+refused, `b7d3b37` review record, `ef327c1` fixes of the first code review
+(D124; F19 deferred). The last pushed commit is `6781c55`.
 
-**Done on 2026-11-05, not committed yet:** the fixes decided in D124 for the
-first code review (`docs/reviews/2026-11-04-code-1/`): F01–F03, F05–F18 (F04
-was `919d85e`; F19 deferred). The fix plan was reviewed by Codex first
-(`docs/reviews/2026-11-05-fix-plan-1/`); its change requests are applied.
-Main changes: unbounded run queue with a re-run hand-off (F02, F15); call
-looked up inside the run (F03); Anthropic SDK environment credentials off
-(F05); expiry checked inside every decision, claim and sweep transaction
-(F07); executing calls closed before `run_finished` (F08); credentials
-re-checked in any restoration order, with host matching (F09, F11); expiry for
-calls that start waiting later (F10); agent links kept, rename collisions
-refused (F12, F13); discard marker at start-up (F14); text flush timer and no
-text after `run_finished` (F16, F06); GET attempts committed before each send,
-tool client without connection reuse (F17); status kept when the body read
-fails (F18); `X-Idempotency-Key` refused at save and send time (F01).
-`docs/schema.md` and `AI_USAGE.md` updated.
+**Second code review** (`docs/reviews/2026-11-05-code-2/`, of
+`4eaf1a5..ef327c1`): F01–F16 and F18 confirmed fixed, `919d85e` confirmed;
+F17 still open (HTTP/2's internal retry) and one regression (N01). The author
+decided to fix both and add the four suggested tests (D125). Done: the tool
+client speaks HTTP/1.1 only (`TestClientUsesHTTP1Only`); `PUT /tools/{id}`
+authorizes before validating (`TestToolUpdateAuthorizationFirst`); tests for
+refused external `$ref`/`$schema` (`TestSchemaExternalLoadsRefused`), a
+foreign call on an expired run, expiry kept through restoration, and the
+flush-timer test with a fixed clock.
 
 **Verified:** `cd backend; go test ./... -count=3` passes; `go vet` and
-`gofmt` clean; `cd web; npm run build` passes. Each new regression test was
-checked against a mutation that undoes its fix: all 15 fail without the fix
-(tests: `internal/run/lifecycle_test.go`, `TestAgentToolLinks`,
-`TestEnvironmentCredentialsIgnored`, `TestClientAttemptBudget`,
-`TestClientRefusesForbiddenHeader`, `TestClientKeepsStatusWhenBodyFails`).
+`gofmt` clean; `cd web; npm run build` passes (no UI change since
+`ef327c1`). Every regression test of D124 and D125 fails when its fix is
+undone (19 mutation checks).
 
 **Not verified yet:** any real provider call, SSE in Next.js dev mode,
 clean-clone setup time.
@@ -223,9 +217,9 @@ To resume:
 
 1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
    `git status`, `git log origin/main..HEAD`.
-2. Commit the fixes when the author asks; Codex code review of the fixes and
-   `919d85e` (D117, `docs/reviews/<date>-code-2/`); the author decides on its
-   findings; push.
+2. Codex code review of the D125 fixes (D117,
+   `docs/reviews/2026-11-05-code-3/`); the author decides on its findings;
+   push.
 3. Author's inputs: an OpenAI key (in `.env` as `DEV_OPENAI_API_KEY` for the
    agent's checks, or entered in the UI, D18); the public repository
    `vodafone-case-sandbox` with `examples/dependency-check/package.json` at

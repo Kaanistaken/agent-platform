@@ -90,7 +90,7 @@ change to a snapshot is replacing a deleted secret's ID with its replacement
 | `pending_approval`, `approved`, `invalidated` | `rejected` | approval expiry (`approval_expired`) or run cancellation (`run_cancelled`); expiry is checked inside every decision and claim, not only by the sweep, so an expired request is never decided or sent (D90, D124) |
 | `approved` | `executing` | a worker claims the call in one conditional update after re-checking the secrets and the model key (D86) |
 | `executing` | `succeeded` | an HTTP response was received (any status code; it goes to the model), also when reading its body failed afterwards: the status is kept and the text notes the failure (D99, D124) |
-| `executing` | `failed` | no response and the request was not sent (e.g. host check, missing secret, refused address), or a `GET` failed after its one retry (D91). `attempt_count` is incremented and committed before every send, so a `GET` has two sends in total across restarts; with none left it fails (`interrupted`) (D91, D94, D124) |
+| `executing` | `failed` | no response and the request was not sent (e.g. host check, missing secret, refused address), or a `GET` failed after its one retry (D91). `attempt_count` is incremented and committed before every send, so a `GET` has two sends in total across restarts; with none left it fails (`interrupted`). The tool client speaks HTTP/1.1 only and does not reuse connections, so Go never re-sends a request inside one counted attempt (D91, D94, D124, D125) |
 | `executing` | `outcome_unknown` | a non-`GET` call was interrupted by a crash, timeout or cancellation after it may have been sent; never retried (D63). On cancellation this happens in the cancelling transaction, before `run_finished` (`run_cancelled`); a late HTTP completion does not change it (D124) |
 | `executing` | `failed` (`run_cancelled`) | a `GET` being sent when the run is cancelled (D124) |
 
@@ -179,7 +179,7 @@ never from the request (D45).
 | `PUT /agents/{id}` | owner | `tool_ids` replaces the list; links that already exist to deleted tools may stay, new deleted links are rejected (D46); owner/team/deleted fields cannot be changed |
 | `DELETE /agents/{id}` | owner or team lead | soft delete; UI asks for confirmation (D43, D44, D58) |
 | `POST /tools` | team | template validation (above) |
-| `PUT /tools/{id}` | owner | revalidated; past snapshots unchanged; `409` if the new name duplicates another tool (deleted ones included) linked to an agent this tool is linked to (D49, D124) |
+| `PUT /tools/{id}` | owner | authorization first (another team's tool `404`, a teammate's `403`, whatever the body), then revalidated; past snapshots unchanged; `409` if the new name duplicates another tool (deleted ones included) linked to an agent this tool is linked to (D49, D124) |
 | `DELETE /tools/{id}` | owner | soft delete; UI asks for confirmation (D34); no lead override |
 | `POST /agents/{id}/clone` | team | caller becomes owner; same tool references; deleted tools are dropped and the response lists them (D52); deleted source cannot be cloned |
 | `POST /tools/{id}/clone` | team | copies the definition; no credentials are copied |

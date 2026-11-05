@@ -490,12 +490,9 @@ func (s *Server) updateTool(w http.ResponseWriter, r *http.Request, u auth.User)
 	if err != nil {
 		return err
 	}
-	d, err := readToolDef(r)
-	if err != nil {
-		return err
-	}
-	headers, _ := json.Marshal(d.Headers)
 	err = s.tx(r, func(tx *sql.Tx) error {
+		// Authorization comes before the body: another team's tool is 404
+		// and a teammate's is 403 whatever is sent (D39, D51).
 		owner, deleted, err := ownedRow(r.Context(), tx, "tools", id, u.TeamID)
 		if err != nil {
 			return err
@@ -506,6 +503,11 @@ func (s *Server) updateTool(w http.ResponseWriter, r *http.Request, u auth.User)
 		if deleted {
 			return conflict("this tool is deleted")
 		}
+		d, err := readToolDef(r)
+		if err != nil {
+			return err
+		}
+		headers, _ := json.Marshal(d.Headers)
 		// D49: the new name must stay unique in every agent the tool is
 		// linked to, counting every other linked tool, deleted ones included.
 		var agent string

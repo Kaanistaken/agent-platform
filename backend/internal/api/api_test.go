@@ -380,3 +380,21 @@ func TestAgentToolLinks(t *testing.T) {
 		t.Fatalf("rename to a deleted linked tool's name: %d", code)
 	}
 }
+
+// D39, D51: authorization is decided before the request body is validated,
+// so an invalid body does not turn a 404 or 403 into a 400.
+func TestToolUpdateAuthorizationFirst(t *testing.T) {
+	a := newAPI(t)
+	alice, bob, carol := a.login("alice"), a.login("bob"), a.login("carol")
+	toolID := alice.id("POST", "/api/tools", readTool)
+	invalid := map[string]any{"name": ""}
+	if code, body := carol.do("PUT", fmt.Sprintf("/api/tools/%d", toolID), invalid); code != 404 {
+		t.Errorf("other team: %d %s", code, body)
+	}
+	if code, body := bob.do("PUT", fmt.Sprintf("/api/tools/%d", toolID), invalid); code != 403 {
+		t.Errorf("teammate: %d %s", code, body)
+	}
+	if code, _ := alice.do("PUT", fmt.Sprintf("/api/tools/%d", toolID), invalid); code != 400 {
+		t.Errorf("owner with an invalid body: %d", code)
+	}
+}

@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -79,6 +81,34 @@ func TestTemplateValidationRejects(t *testing.T) {
 		`{"type":"object","$defs":{"s":{"type":"string"}},"properties":{"a":{"$ref":"#/$defs/s"}}}`)
 	if err := Validate(local); err != nil {
 		t.Errorf("local $ref: %v", err)
+	}
+	if _, err := ParseArgs(local, `{"a":5}`); err == nil {
+		t.Error("local $ref: a number passed a string schema")
+	}
+	if _, err := ParseArgs(local, `{"a":"x"}`); err != nil {
+		t.Errorf("local $ref: %v", err)
+	}
+}
+
+// D11: a parameter schema cannot make the server load a file or a URL,
+// through "$ref" or a custom "$schema".
+func TestSchemaExternalLoadsRefused(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.json")
+	if err := os.WriteFile(path, []byte(`{"type":"string"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fileURL := "file:///" + filepath.ToSlash(path)
+	schemas := map[string]string{
+		"file $ref":     `{"type":"object","properties":{"a":{"$ref":"` + fileURL + `"}}}`,
+		"https $ref":    `{"type":"object","properties":{"a":{"$ref":"https://example.com/s.json"}}}`,
+		"custom schema": `{"$schema":"https://example.com/meta.json","type":"object","properties":{"a":{"type":"string"}}}`,
+		"file schema":   `{"$schema":"` + fileURL + `","type":"object","properties":{"a":{"type":"string"}}}`,
+	}
+	for name, schema := range schemas {
+		err := Validate(def("GET", "https://api.github.com/{{a}}", nil, "", schema))
+		if !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: got %v, want a validation error", name, err)
+		}
 	}
 }
 
@@ -350,5 +380,44 @@ func TestClientKeepsStatusWhenBodyFails(t *testing.T) {
 	res, err = c.Do(context.Background(), Request{Method: "GET", URL: "https://example.com/y", Host: "example.com"}, nil, GetAttempts, noAttempt)
 	if err != nil || res.Status != http.StatusServiceUnavailable || getHits != 2 {
 		t.Fatalf("GET: status %d, err %v, hits %d", res.Status, err, getHits)
+	}
+}
+
+// F17 (D63, D91): the client never speaks HTTP/2, whose internal retry loop
+// can re-send a request (any method) within one counted attempt; it uses
+// HTTP/1.1 even when the server offers h2.
+func TestClientUsesHTTP1Only(t *testing.T) {
+	var protos []string
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		protos = append(protos, r.Proto)
+	}))
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
+	t.Cleanup(srv.Close)
+
+	// The server does offer HTTP/2 to a client that wants it.
+	resp, err := srv.Client().Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.ProtoMajor != 2 {
+		t.Fatalf("test server did not negotiate HTTP/2: %s", resp.Proto)
+	}
+
+	pool := x509.NewCertPool()
+	pool.AddCert(srv.Certificate())
+	target := srv.Listener.Addr().String()
+	c := newClient(func(netip.AddrPort) error { return nil }, func(string) string { return target },
+		&tls.Config{RootCAs: pool, ServerName: "example.com"})
+	protos = nil
+	for _, m := range []string{"GET", "POST"} {
+		if _, err := c.Do(context.Background(), Request{Method: m, URL: "https://example.com/x", Host: "example.com", Body: "{}"},
+			nil, 1, noAttempt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(protos) != 2 || protos[0] != "HTTP/1.1" || protos[1] != "HTTP/1.1" {
+		t.Fatalf("protocols used: %v", protos)
 	}
 }
