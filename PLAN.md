@@ -140,6 +140,7 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D124 | 2026-11-05 | Decision on the first code review (`docs/reviews/2026-11-04-code-1/`, F01–F19): fix the high findings (F01, F02) and every medium finding **except F06**; F06 (text after `run_finished`) and F19 (unknown usage shown as zero) are not fixed now. F04 is already fixed (`919d85e`). The fix plan is reviewed by Codex before coding (`docs/reviews/2026-11-05-fix-plan-1/`). **Amended after that review (author, 2026-11-05): F06 is fixed too**, because the F16 flush timer alone would write buffered text after `run_finished` more often; F19 stays deferred. The review's other change requests needed no new decision and are applied. | The author's choice; F06 added on Codex's warning. |
 | D125 | 2026-11-05 | Decision on the second code review (`docs/reviews/2026-11-05-code-2/`): fix everything — F17 (HTTP/2's internal retry can re-send a GET or an approved POST within one counted attempt), N01 (`PUT /tools/{id}` validated the body before authorization: 400 instead of 404/403) — and add the four suggested tests (external `$ref`/`$schema` refused; foreign call on an expired run is 404; expiry kept through restoration; timer test inside the 250 ms window). | The author's choice. |
 | D126 | 2026-11-05 | Decision on the third code review (`docs/reviews/2026-11-05-code-3/`): fix N02 (the N01 fix read the `PUT /tools/{id}` body inside the write transaction, so a client withholding its body could block every write) by authorizing without a transaction, reading the body, then re-checking inside the transaction, with a blocked-body test; extend the expired-run foreign-call test to rejection. The other two notes (HTTPS `$ref` case cannot tell which loader refused; timer callback racing close) are left as they are. | The author accepted Claude Code's recommendation. |
+| D127 | 2026-11-05 | Decision on the fourth code review (`docs/reviews/2026-11-05-code-4/`): no defects; N02 closed. Codex's note that `TestSlowToolBodyDoesNotBlockWrites` relies on a 200 ms wait (not a server-side signal) and ignores the slow request's status is recorded and left as it is. Push. | The author accepted Claude Code's recommendation. |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -191,10 +192,12 @@ options and their trade-offs → the author decides → the batch is sent to
 
 Updated on 2026-11-05. All planning batches are closed (D1–D124).
 
-**Committed, not pushed:** `9382ecd` backend and tests, `6d40b37` UI,
+**Pushed on 2026-11-05** after four code reviews (D117, D124–D127):
+`9382ecd` backend and tests, `6d40b37` UI,
 `4eaf1a5` example agent, README and records, `919d85e` external `$ref`
 refused, `b7d3b37` review record, `ef327c1` fixes of the first code review
-(D124; F19 deferred). The last pushed commit is `6781c55`.
+(D124; F19 deferred), `7f5ddf5` (D125), `57c2aed` (D126) and the
+review record of D127.
 
 **Second code review** (`docs/reviews/2026-11-05-code-2/`, of
 `4eaf1a5..ef327c1`): F01–F16 and F18 confirmed fixed, `919d85e` confirmed;
@@ -223,9 +226,7 @@ To resume:
 
 1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
    `git status`, `git log origin/main..HEAD`.
-2. Codex code review of the D126 fix (D117,
-   `docs/reviews/2026-11-05-code-4/`); the author decides on its findings;
-   push.
+2. Every later push again needs a Codex code review first (D117).
 3. Author's inputs: an OpenAI key (in `.env` as `DEV_OPENAI_API_KEY` for the
    agent's checks, or entered in the UI, D18); the public repository
    `vodafone-case-sandbox` with `examples/dependency-check/package.json` at
