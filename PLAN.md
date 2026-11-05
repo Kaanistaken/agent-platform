@@ -139,6 +139,7 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D123 | 2026-11-04 | Implementation choices made by the agent under D85, D119 and D121 (recorded, not the author's decisions). **Dependencies** (backend): `modernc.org/sqlite` v1.61.1 (D6), `github.com/openai/openai-go/v3` v3.94.0 and `github.com/anthropics/anthropic-sdk-go` v1.84.0 (D9; used for transport, errors and stream parsing only; request bodies set with `option.WithJSONSet` so provider items are sent back verbatim, D96), `golang.org/x/crypto` (bcrypt, D16), `github.com/joho/godotenv` v1.5.1 (`.env` loading), `github.com/santhosh-tekuri/jsonschema/v6` v6.0.3 (tool parameter schemas, R3). No HTTP framework: Go's `net/http` router. **UI**: `next` 16.4.5, `react`/`react-dom` 19.3.1, `typescript` 5.9.3 (not 7.x: Next.js type checking targets 5.x), no CSS or UI library. **Toolchain**: `go 1.26.0` + `toolchain go1.26.4`; `web/.nvmrc` 24.18.0; `package-lock.json` with `npm ci`. **Ports and commands**: Go API on `127.0.0.1:8080`, Next.js on `3000` (`BACKEND_URL` overrides the target); `go run ./cmd/initenv` (writes missing `.env` values), `go run ./cmd/server`, `go run ./cmd/example` (defines the example agent through the API), `go test ./...`, `npm ci && npm run build && npm start`. **Values (D85)**: session 12 h; SSE heartbeat 15 s (D71); 4 run workers; approval-expiry sweep every minute; tool connect timeout 30 s and TLS handshake 15 s inside the 2 min call limit; request body limit 1 MB; task and system prompt at most 20,000 characters; rejection note at most 2,000 characters; secret values at most 4,096 bytes. **Behaviour details**: a provider 401 message is replaced by a generic text because providers quote part of the key (R7); Next.js compression is off so SSE is not buffered (D68). | Delegated by the author (D85, D119, D121). |
 | D124 | 2026-11-05 | Decision on the first code review (`docs/reviews/2026-11-04-code-1/`, F01–F19): fix the high findings (F01, F02) and every medium finding **except F06**; F06 (text after `run_finished`) and F19 (unknown usage shown as zero) are not fixed now. F04 is already fixed (`919d85e`). The fix plan is reviewed by Codex before coding (`docs/reviews/2026-11-05-fix-plan-1/`). **Amended after that review (author, 2026-11-05): F06 is fixed too**, because the F16 flush timer alone would write buffered text after `run_finished` more often; F19 stays deferred. The review's other change requests needed no new decision and are applied. | The author's choice; F06 added on Codex's warning. |
 | D125 | 2026-11-05 | Decision on the second code review (`docs/reviews/2026-11-05-code-2/`): fix everything — F17 (HTTP/2's internal retry can re-send a GET or an approved POST within one counted attempt), N01 (`PUT /tools/{id}` validated the body before authorization: 400 instead of 404/403) — and add the four suggested tests (external `$ref`/`$schema` refused; foreign call on an expired run is 404; expiry kept through restoration; timer test inside the 250 ms window). | The author's choice. |
+| D126 | 2026-11-05 | Decision on the third code review (`docs/reviews/2026-11-05-code-3/`): fix N02 (the N01 fix read the `PUT /tools/{id}` body inside the write transaction, so a client withholding its body could block every write) by authorizing without a transaction, reading the body, then re-checking inside the transaction, with a blocked-body test; extend the expired-run foreign-call test to rejection. The other two notes (HTTPS `$ref` case cannot tell which loader refused; timer callback racing close) are left as they are. | The author accepted Claude Code's recommendation. |
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -205,10 +206,15 @@ refused external `$ref`/`$schema` (`TestSchemaExternalLoadsRefused`), a
 foreign call on an expired run, expiry kept through restoration, and the
 flush-timer test with a fixed clock.
 
+**Third code review** (`docs/reviews/2026-11-05-code-3/`): F17 and N01
+closed; N02 (the N01 fix read the tool body inside the write transaction)
+fixed under D126 with `TestSlowToolBodyDoesNotBlockWrites`, which reproduces
+the blocked writer on the previous code; the expired-run foreign-call test
+also covers rejection.
+
 **Verified:** `cd backend; go test ./... -count=3` passes; `go vet` and
 `gofmt` clean; `cd web; npm run build` passes (no UI change since
-`ef327c1`). Every regression test of D124 and D125 fails when its fix is
-undone (19 mutation checks).
+`ef327c1`). Every regression test of D124–D126 fails when its fix is undone.
 
 **Not verified yet:** any real provider call, SSE in Next.js dev mode,
 clean-clone setup time.
@@ -217,8 +223,8 @@ To resume:
 
 1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
    `git status`, `git log origin/main..HEAD`.
-2. Codex code review of the D125 fixes (D117,
-   `docs/reviews/2026-11-05-code-3/`); the author decides on its findings;
+2. Codex code review of the D126 fix (D117,
+   `docs/reviews/2026-11-05-code-4/`); the author decides on its findings;
    push.
 3. Author's inputs: an OpenAI key (in `.env` as `DEV_OPENAI_API_KEY` for the
    agent's checks, or entered in the UI, D18); the public repository

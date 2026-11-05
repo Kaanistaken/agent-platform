@@ -490,24 +490,22 @@ func (s *Server) updateTool(w http.ResponseWriter, r *http.Request, u auth.User)
 	if err != nil {
 		return err
 	}
+	// Authorization comes before the body: another team's tool is 404 and a
+	// teammate's is 403 whatever is sent (D39, D51). It is checked on the
+	// read pool first, so a slow body never holds the single write
+	// connection (D82), and again inside the transaction.
+	if err := toolWriteAccess(r.Context(), s.DB.R, id, u); err != nil {
+		return err
+	}
+	d, err := readToolDef(r)
+	if err != nil {
+		return err
+	}
+	headers, _ := json.Marshal(d.Headers)
 	err = s.tx(r, func(tx *sql.Tx) error {
-		// Authorization comes before the body: another team's tool is 404
-		// and a teammate's is 403 whatever is sent (D39, D51).
-		owner, deleted, err := ownedRow(r.Context(), tx, "tools", id, u.TeamID)
-		if err != nil {
+		if err := toolWriteAccess(r.Context(), tx, id, u); err != nil {
 			return err
 		}
-		if owner != u.ID {
-			return forbidden("only the owner can change this tool; clone it to make your own copy")
-		}
-		if deleted {
-			return conflict("this tool is deleted")
-		}
-		d, err := readToolDef(r)
-		if err != nil {
-			return err
-		}
-		headers, _ := json.Marshal(d.Headers)
 		// D49: the new name must stay unique in every agent the tool is
 		// linked to, counting every other linked tool, deleted ones included.
 		var agent string
@@ -537,6 +535,24 @@ func (s *Server) updateTool(w http.ResponseWriter, r *http.Request, u auth.User)
 		return err
 	}
 	writeJSON(w, http.StatusOK, t)
+	return nil
+}
+
+// toolWriteAccess allows changes only by the tool's owner, on a tool that is
+// not deleted.
+func toolWriteAccess(ctx context.Context, q interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}, id int64, u auth.User) error {
+	owner, deleted, err := ownedRow(ctx, q, "tools", id, u.TeamID)
+	if err != nil {
+		return err
+	}
+	if owner != u.ID {
+		return forbidden("only the owner can change this tool; clone it to make your own copy")
+	}
+	if deleted {
+		return conflict("this tool is deleted")
+	}
 	return nil
 }
 

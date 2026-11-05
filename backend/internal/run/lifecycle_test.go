@@ -150,6 +150,9 @@ func TestDecisionOnForeignCall(t *testing.T) {
 	if err := eng.Approve(context.Background(), e.alice, e.alpha, runA, callB, rev); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("approve on an expired run: %v", err)
 	}
+	if err := eng.Reject(context.Background(), e.alice, e.alpha, runA, callB, rev, ""); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("reject on an expired run: %v", err)
+	}
 }
 
 // F07: an expired request cannot be decided or sent, even before the sweep.

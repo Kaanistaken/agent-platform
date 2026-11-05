@@ -179,7 +179,7 @@ never from the request (D45).
 | `PUT /agents/{id}` | owner | `tool_ids` replaces the list; links that already exist to deleted tools may stay, new deleted links are rejected (D46); owner/team/deleted fields cannot be changed |
 | `DELETE /agents/{id}` | owner or team lead | soft delete; UI asks for confirmation (D43, D44, D58) |
 | `POST /tools` | team | template validation (above) |
-| `PUT /tools/{id}` | owner | authorization first (another team's tool `404`, a teammate's `403`, whatever the body), then revalidated; past snapshots unchanged; `409` if the new name duplicates another tool (deleted ones included) linked to an agent this tool is linked to (D49, D124) |
+| `PUT /tools/{id}` | owner | authorization first (another team's tool `404`, a teammate's `403`, whatever the body; checked before the body is read and again in the write transaction, so a slow body never holds the writer), then revalidated; past snapshots unchanged; `409` if the new name duplicates another tool (deleted ones included) linked to an agent this tool is linked to (D49, D124) |
 | `DELETE /tools/{id}` | owner | soft delete; UI asks for confirmation (D34); no lead override |
 | `POST /agents/{id}/clone` | team | caller becomes owner; same tool references; deleted tools are dropped and the response lists them (D52); deleted source cannot be cloned |
 | `POST /tools/{id}/clone` | team | copies the definition; no credentials are copied |

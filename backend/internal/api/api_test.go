@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -396,5 +397,48 @@ func TestToolUpdateAuthorizationFirst(t *testing.T) {
 	}
 	if code, _ := alice.do("PUT", fmt.Sprintf("/api/tools/%d", toolID), invalid); code != 400 {
 		t.Errorf("owner with an invalid body: %d", code)
+	}
+}
+
+// D82: a tool update whose body has not arrived yet does not hold the single
+// write connection; other writes go on meanwhile.
+func TestSlowToolBodyDoesNotBlockWrites(t *testing.T) {
+	a := newAPI(t)
+	alice, carol := a.login("alice"), a.login("carol")
+	toolID := alice.id("POST", "/api/tools", readTool)
+
+	body, feed := io.Pipe()
+	req, _ := http.NewRequest("PUT", fmt.Sprintf("%s/api/tools/%d", a.srv.URL, toolID), body)
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Content-Type", "application/json")
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if resp, err := alice.http.Do(req); err == nil {
+			resp.Body.Close()
+		}
+	}()
+	io.WriteString(feed, `{"name":"read_file",`) // the rest is withheld
+	time.Sleep(200 * time.Millisecond)           // the handler is now reading the body
+
+	wrote := make(chan int, 1)
+	go func() {
+		code, _ := carol.do("PUT", "/api/me/model-keys/openai", map[string]string{"key": "sk-carol"})
+		wrote <- code
+	}()
+	blocked := false
+	select {
+	case code := <-wrote:
+		if code != 204 {
+			t.Errorf("unrelated write: %d", code)
+		}
+	case <-time.After(3 * time.Second):
+		blocked = true
+		t.Error("an unrelated write waited for the slow request body")
+	}
+	feed.CloseWithError(errors.New("client gone"))
+	<-done
+	if blocked {
+		<-wrote // released once the slow request ends
 	}
 }
