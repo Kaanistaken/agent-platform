@@ -141,6 +141,8 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D125 | 2026-11-05 | Decision on the second code review (`docs/reviews/2026-11-05-code-2/`): fix everything — F17 (HTTP/2's internal retry can re-send a GET or an approved POST within one counted attempt), N01 (`PUT /tools/{id}` validated the body before authorization: 400 instead of 404/403) — and add the four suggested tests (external `$ref`/`$schema` refused; foreign call on an expired run is 404; expiry kept through restoration; timer test inside the 250 ms window). | The author's choice. |
 | D126 | 2026-11-05 | Decision on the third code review (`docs/reviews/2026-11-05-code-3/`): fix N02 (the N01 fix read the `PUT /tools/{id}` body inside the write transaction, so a client withholding its body could block every write) by authorizing without a transaction, reading the body, then re-checking inside the transaction, with a blocked-body test; extend the expired-run foreign-call test to rejection. The other two notes (HTTPS `$ref` case cannot tell which loader refused; timer callback racing close) are left as they are. | The author accepted Claude Code's recommendation. |
 | D127 | 2026-11-05 | Decision on the fourth code review (`docs/reviews/2026-11-05-code-4/`): no defects; N02 closed. Codex's note that `TestSlowToolBodyDoesNotBlockWrites` relies on a 200 ms wait (not a server-side signal) and ignores the slow request's status is recorded and left as it is. Push. | The author accepted Claude Code's recommendation. |
+| D128 | 2026-11-06 | Finding from the live runs: `GET /runs` reuses the tool reference type for the run's agent, so each agent carries a meaningless `"requires_approval": false`. Left as it is. | The author's choice; harmless, no behaviour depends on it. |
+
 ## Planning batches
 
 Open decisions are grouped into batches. For each batch: the agent lays out the
@@ -163,12 +165,12 @@ options and their trade-offs → the author decides → the batch is sent to
 | R1 | Agents are data | Implemented | `api/definitions.go`; example agent created through the API (`cmd/example`); `api_test.go` |
 | R2 | Tools are HTTP request templates | Implemented | `tool/template.go`, `tool/client.go`; `tool_test.go` (grammar, escaping, secrets only at send time, masking, host binding) |
 | R3 | Agent loop handles failure | Implemented | `run/model.go`; `TestLoopValidationAndLimits` |
-| R4 | Runs stream live and always end in a final state | Implemented; SSE through the Next.js proxy checked manually in production mode (dev mode not yet) | `run/`, `api/runs.go`; `TestTerminalStatesAndCancellation`, `TestEventStreamReplay` |
+| R4 | Runs stream live and always end in a final state | Implemented; SSE through the Next.js proxy checked manually in production mode and, with a timed live run, in dev mode (2026-11-06) | `run/`, `api/runs.go`; `TestTerminalStatesAndCancellation`, `TestEventStreamReplay` |
 | R5 | Risky steps wait for approval; pending approval survives restart | Implemented | `run/approvals.go`, `run/invalidate.go`; `TestApprovalPersistsAndDispatchesOnce`, `TestApprovalRacesAndCredentialChanges`, `TestInterruptedWriteOutcomeUnknown`, `TestApprovalExpiry` |
 | R6 | Teams are isolated (server-enforced) | Implemented | handlers scope every query by the session's team; composite keys (D46); `TestTeamAndUsageAuthorization` |
 | R7 | Each user brings their own model key | Implemented | `crypto/`, `api/auth.go`; `crypto_test.go`, adapter tests (environment keys ignored) |
-| R8 | Provider-agnostic and metered | Implemented; **not yet verified against the real providers** | `provider/openai`, `provider/anthropic` fixture tests; `model_calls`; `GET /api/usage` |
-| EA | Example agent, end to end | Defined (`examples/dependency-check/`); **live run pending** (author's keys, sandbox repository and token) | |
+| R8 | Provider-agnostic and metered | Implemented; verified live with `gpt-6-luna` (run 1) and `claude-haiku-5-5` (run 2) on 2026-11-06; 429 handling covered by fixture tests only | `provider/openai`, `provider/anthropic` fixture tests; `model_calls`; `GET /api/usage` |
+| EA | Example agent, end to end | Run live on 2026-11-06 with both providers, each with a real approved issue (#1, #2 in `Kaanistaken/vodafone-case-sandbox`); recorded run under `examples/` pending | `examples/dependency-check/`; runs 1 and 2 in `backend/data/app.db` |
 
 ## Deliverables
 
@@ -190,54 +192,88 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-Updated on 2026-11-05. All planning batches are closed (D1–D124).
+Stopped on 2026-11-05 (evening); work resumes on **2026-11-06 with the live
+validation** (author's decision). All planning batches are closed (D1–D127).
 
-**Pushed on 2026-11-05** after four code reviews (D117, D124–D127):
-`9382ecd` backend and tests, `6d40b37` UI,
-`4eaf1a5` example agent, README and records, `919d85e` external `$ref`
-refused, `b7d3b37` review record, `ef327c1` fixes of the first code review
-(D124; F19 deferred), `7f5ddf5` (D125), `57c2aed` (D126) and the
-review record of D127.
-
-**Second code review** (`docs/reviews/2026-11-05-code-2/`, of
-`4eaf1a5..ef327c1`): F01–F16 and F18 confirmed fixed, `919d85e` confirmed;
-F17 still open (HTTP/2's internal retry) and one regression (N01). The author
-decided to fix both and add the four suggested tests (D125). Done: the tool
-client speaks HTTP/1.1 only (`TestClientUsesHTTP1Only`); `PUT /tools/{id}`
-authorizes before validating (`TestToolUpdateAuthorizationFirst`); tests for
-refused external `$ref`/`$schema` (`TestSchemaExternalLoadsRefused`), a
-foreign call on an expired run, expiry kept through restoration, and the
-flush-timer test with a fixed clock.
-
-**Third code review** (`docs/reviews/2026-11-05-code-3/`): F17 and N01
-closed; N02 (the N01 fix read the tool body inside the write transaction)
-fixed under D126 with `TestSlowToolBodyDoesNotBlockWrites`, which reproduces
-the blocked writer on the previous code; the expired-run foreign-call test
-also covers rejection.
+**State at the stop.** Everything is committed and pushed: `main` equals
+`origin/main` at `586c850`. The day went to the four pre-push code reviews
+(D117, D124–D127): the first review's findings F01–F18 are fixed (F19 deferred
+to `DESIGN.md` as a known limitation), then F17 (HTTP/2 re-send), N01 and N02
+from the follow-up reviews. Records: `docs/reviews/2026-11-05-*`,
+`AI_USAGE.md`.
 
 **Verified:** `cd backend; go test ./... -count=3` passes; `go vet` and
-`gofmt` clean; `cd web; npm run build` passes (no UI change since
-`ef327c1`). Every regression test of D124–D126 fails when its fix is undone.
+`gofmt` clean; `cd web; npm run build` passes. Every regression test of
+D124–D126 fails when its fix is undone (mutation checks).
 
-**Not verified yet:** any real provider call, SSE in Next.js dev mode,
-clean-clone setup time.
+**Not verified yet:** clean-clone setup time; a live rejection; a live 429.
+(Real provider calls and SSE in dev mode were verified on 2026-11-06, see
+step 3 below.)
 
-To resume:
+**Schedule (D112).** The code is ahead of plan; the live validation planned
+for Nov 5 (D122) moved to Nov 6. Remaining days: Nov 6 live validation and
+Anthropic run, Nov 7 fixes from the live runs, recorded run, `DESIGN.md`;
+Nov 8 clean-clone setup measurement, D95 limit review, README; Nov 9 final
+fixes and the author's screen recording.
+
+To resume on 2026-11-06:
 
 1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
    `git status`, `git log origin/main..HEAD`.
-2. Every later push again needs a Codex code review first (D117).
-3. Author's inputs: an OpenAI key (in `.env` as `DEV_OPENAI_API_KEY` for the
-   agent's checks, or entered in the UI, D18); the public repository
-   `vodafone-case-sandbox` with `examples/dependency-check/package.json` at
-   its root, a fine-grained token limited to it (Issues read/write), and the
-   GitHub account name for the README's `<owner>` (D107).
-4. Live validation (D122): model IDs via the model-list endpoints (D78); one
+2. ~~Collect the author's inputs~~ — done on 2026-11-06: keys in `.env`;
+   public sandbox <https://github.com/Kaanistaken/vodafone-case-sandbox>
+   (`main`, root `package.json` checked unauthenticated through the API,
+   Issues enabled); fine-grained token created by the author, to be entered
+   in the UI as `GITHUB_TOKEN` for `api.github.com`; README `<owner>` filled.
+   Original list: an OpenAI key (in `.env` as
+   `DEV_OPENAI_API_KEY` for the agent's checks, or entered in the UI, D18);
+   the public repository `vodafone-case-sandbox` with
+   `examples/dependency-check/package.json` at its root, a fine-grained token
+   limited to it (Issues read/write), and the GitHub account name for the
+   README's `<owner>` (D107). An Anthropic key for the second provider run
+   (D103).
+3. Live validation (D122): ~~model IDs via the model-list endpoints (D78)~~ —
+   done on 2026-11-06: both `.env` keys return 200 from `GET /v1/models`;
+   `gpt-6-luna`, `gpt-6-sol`, `claude-haiku-5-5` and `claude-sonnet-5-5` are
+   all listed (no cost). **First live OpenAI run done on 2026-11-06**
+   (run 1, full agent "Dependency check", `gpt-6-luna`, alice): 7 model
+   turns, 6 tool calls (manifest, 4 × OSV, issue); the run stopped in
+   `waiting_approval`, the author approved, GitHub returned `201` and opened
+   <https://github.com/Kaanistaken/vodafone-case-sandbox/issues/1>; run
+   `succeeded` in 30 s. Usage recorded for every call: 68,331 input and 955
+   output tokens, no unknown usage; spend to be read from the OpenAI
+   dashboard (D122 (5)). This run covers D110 (1) and may serve as the
+   recorded run (D104); `backend/data/app.db` is kept for the export. The
+   read-only quick-path agent has not been run live yet. **Anthropic run
+   done on 2026-11-06** (run 2, agent "Dependency check (copy)", a UI clone
+   of agent 1 switched to `claude-haiku-5-5`; no code change, R1): same 6
+   tool calls, `waiting_approval` → approved → GitHub `201`,
+   <https://github.com/Kaanistaken/vodafone-case-sandbox/issues/2>;
+   `succeeded` in 29 s; 7 model calls, 109,837 input and 2,833 output
+   tokens, usage complete. Advisory IDs, severities and fixed versions in
+   the issue were checked against the stored OSV results (including the
+   `lodash.unset`/`lodash.omit` note from CVE-2025-13465): nothing invented.
+   Both providers are now verified live (R8, D103, D110 (1)). **Quick path
+   and SSE in dev mode done on 2026-11-06** with `npm run dev`: runs 3 and 4
+   of the read-only agent (`gpt-6-luna`), both `succeeded` (manifest + 4 × OSV,
+   no issue tool, table answer; about 51,100 input tokens each). Run 3 was
+   meant to time the stream but the timing script failed (no `bc` in Git
+   Bash), so run 4 repeated it with a Python client through the Next.js dev
+   proxy: events arrived spread over the run as they happened (tool calls at
+   about 1.0 / 2.2 / 3.7 / 5.1 / 6.5 s, `run_finished` at 10.9 s) and text
+   deltas every 250 ms (8.66 → 10.86 s), matching the backend flush interval
+   (D70): no buffering in dev mode (D110 (5)). Team total after runs 1–4:
+   26 model calls, 280,377 input and 5,349 output tokens, none unknown.
+   **Actual spend (author, from the provider dashboards, 2026-11-06): about
+   USD 0.01 on OpenAI and USD 0.01 on Anthropic** for model-ID checks and
+   runs 1–4 (D118). Original plan: one
    OpenAI run of the read-only agent; then the full run with approval and a
-   real issue (D110).
-5. Rest of the schedule (D112): SSE check in dev mode; Anthropic live run;
-   `DESIGN.md` (include F19 as a known limitation if still open); recorded run
-   in `examples/`; D95 limit review; clean-clone setup timing (D114).
+   real issue (D110); then the Anthropic run. Write actual spend here after
+   each live session (D118).
+4. Rest of the schedule: ~~SSE check in dev mode~~ (done, see 3); `DESIGN.md` (with F19 as a
+   known limitation); recorded run in `examples/`; D95 limit review;
+   clean-clone setup timing (D114).
+5. Every push needs a Codex code review first (D117).
 
 Deadline 2026-11-09; budget cap USD 5 (top of this file). Keys go in the
 git-ignored `.env` (`DEV_OPENAI_API_KEY`, `DEV_ANTHROPIC_API_KEY`) for the

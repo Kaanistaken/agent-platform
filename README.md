@@ -59,7 +59,7 @@ go run ./cmd/example -user alice      # the platform must be running; reads alic
 This creates three tools (`read_repo_file`, `osv_query`, `create_github_issue`) and two agents:
 
 **Quick path: no GitHub token needed.** Run **Dependency check (read-only)** with a task such as
-`Check the dependencies of <owner>/vodafone-case-sandbox`. It reads the public manifest, queries OSV and answers with
+`Check the dependencies of Kaanistaken/vodafone-case-sandbox`. It reads the public manifest, queries OSV and answers with
 a table. The approval step is not part of this agent.
 
 **Full path: about 3 minutes of GitHub preparation (not yet timed).**
@@ -70,7 +70,7 @@ a table. The approval step is not part of this agent.
 2. In the platform, go to **Settings → Your tool secrets** and add `GITHUB_TOKEN` with allowed host `api.github.com`
    and the token as value. The secret is only ever sent to that host, only in runs you start.
 3. Run **Dependency check** with a task such as
-   `Check <owner>/vodafone-case-sandbox and open the issue in <you>/<your-repo>`.
+   `Check Kaanistaken/vodafone-case-sandbox and open the issue in <you>/<your-repo>`.
 4. The run pauses at `create_github_issue`, showing the exact request without the secret. Approve it (or reject it
    with a note) and the run continues live.
 
