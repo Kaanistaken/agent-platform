@@ -143,6 +143,8 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D127 | 2026-11-05 | Decision on the fourth code review (`docs/reviews/2026-11-05-code-4/`): no defects; N02 closed. Codex's note that `TestSlowToolBodyDoesNotBlockWrites` relies on a 200 ms wait (not a server-side signal) and ignores the slow request's status is recorded and left as it is. Push. | The author accepted Claude Code's recommendation. |
 | D128 | 2026-11-06 | Finding from the live runs: `GET /runs` reuses the tool reference type for the run's agent, so each agent carries a meaningless `"requires_approval": false`. Left as it is. | The author's choice; harmless, no behaviour depends on it. |
 | D129 | 2026-11-06 | `next dev` (Next.js 16) writes `web/AGENTS.md`, a note for AI agents; it is ignored in `.gitignore` and not committed. `web/next-env.d.ts` switches to `.next/dev/` paths in dev mode and is restored before a commit. | The author's choice; generated tooling output is not part of the project. |
+| D130 | 2026-11-06 | `DESIGN.md` security section: the four residual risks stay (prompt injection through tool responses, master key plus database file, seeded passwords in `.env`, a lead deleting a teammate's agent). Each is presented as a risk inherent to an agent platform, together with the mitigations already in place. | The author's choice: residual risks are stated honestly, not as defects. |
+| D131 | 2026-11-06 | `DESIGN.md` scaling section also lists, as changes at several thousand developers: the master key moves from `.env` to a KMS; SSO instead of seeded passwords, with per-team budgets and alerting on the usage records; a per-team host allowlist and review of shared tools. | The author's choice (proposed by Claude Code while compiling `DESIGN.md`). |
 
 ## Planning batches
 
@@ -179,10 +181,10 @@ options and their trade-offs → the author decides → the batch is sent to
 | --- | --- |
 | Git history | In progress |
 | `README.md` | Draft; setup time not yet measured (D114) |
-| `DESIGN.md` (≤ 2 pages) | Skeleton |
+| `DESIGN.md` (≤ 2 pages) | Compiled from the decisions on 2026-11-06 (about 1,300 words; D130, D131 settled the unbacked lines); the two-page limit is still to be checked in print |
 | `AI_USAGE.md` | Started; updated as the work happens |
 | Tests (agent loop, tool templates, team permissions, approval flow) | Written and passing (`cd backend; go test ./...`) |
-| Recorded run under `examples/` | Not started |
+| Recorded run under `examples/` | Run 1 exported on 2026-11-06 to `examples/dependency-check/recorded-run/` (`events.json`, `transcript.md`) through the API with a field allowlist; known-value (incl. base64/URL forms) and token-pattern scans clean; manual `git diff --cached` review before commit pending |
 | Screen recording (≤ 5 min, includes approval) | Not started |
 
 ## Before delivery
@@ -207,7 +209,16 @@ from the follow-up reviews. Records: `docs/reviews/2026-11-05-*`,
 `gofmt` clean; `cd web; npm run build` passes. Every regression test of
 D124–D126 fails when its fix is undone (mutation checks).
 
-**Not verified yet:** clean-clone setup time; a live rejection; a live 429.
+**Live rejection verified on 2026-11-06** (run 5, agent "Dependency check",
+`gpt-6-luna`): the author rejected `create_github_issue` with the note "Not
+now, just give me the summary"; the call became `rejected`
+(`rejected_by_starter`), the model received "The user rejected this tool
+call; it was not executed. The user's note: …", made no further tool call
+and finished with a summary; run `succeeded`; no new issue on GitHub
+(still #1 and #2); 7 model calls, 67,474 input and 1,153 output tokens
+(D72, D89).
+
+**Not verified yet:** clean-clone setup time; a live 429.
 (Real provider calls and SSE in dev mode were verified on 2026-11-06, see
 step 3 below.)
 

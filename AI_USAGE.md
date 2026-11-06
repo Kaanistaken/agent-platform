@@ -11,7 +11,7 @@ added as the work happens.
 
 | Tool | Model | Used for |
 | --- | --- | --- |
-| Claude Code | Claude Opus 5.5 | Adapting the agent working protocol (`AGENTS.md`, `CLAUDE.md`); laying out options and trade-offs for each planning batch; drafting `PLAN.md`, `DESIGN.md` and this file from the author's decisions; writing the implementation (backend, UI, tests, example agent, README) from the recorded decisions (from 2026-11-04). |
+| Claude Code | Claude Opus 5.5 | Adapting the agent working protocol (`AGENTS.md`, `CLAUDE.md`); laying out options and trade-offs for each planning batch; drafting `PLAN.md`, `DESIGN.md` and this file from the author's decisions; writing the implementation (backend, UI, tests, example agent, README) from the recorded decisions (from 2026-11-04); verifying the author's live runs through the platform's API, exporting the recorded run to `examples/` and compiling `DESIGN.md` (2026-11-06). |
 | Codex CLI | `gpt-6.1-sol` (reasoning effort `high`) | Read-only review of planning decisions, batch by batch. Prompts and answers: `docs/reviews/`. |
 
 ## Rejected or corrected suggestions
@@ -47,6 +47,8 @@ added as the work happens.
 | 2026-11-05 | Codex (code review 3) | Review of the D125 fixes (`docs/reviews/2026-11-05-code-3/`): F17 and N01 closed; N02, a new regression by Claude Code: the N01 fix read the `PUT /tools/{id}` body inside the write transaction, so a client withholding its body could block every write; three test notes. | **Accepted by the author** on Claude Code's recommendation (D126): authorization is checked on the read pool, the body is read, then everything is re-checked in the transaction; a blocked-body test reproduces N02 on the old code; the expired-run foreign-call test covers rejection too. Two test notes were left as they are. |
 | 2026-11-05 | Codex (code review 2) | Review of the fixes (`docs/reviews/2026-11-05-code-2/`): F17 still open because Go's HTTP/2 client re-sends a request (any method) after some stream errors, which turning off connection reuse does not prevent; N01, a regression by Claude Code: `PUT /tools/{id}` validated the body before authorization (400 instead of 404/403); four missing tests. | **Accepted by the author** (D125): the tool client is limited to HTTP/1.1, authorization comes first again, and the four tests were added. Claude Code's earlier claim that disabling connection reuse closed F17 was **corrected** by this review. |
 | 2026-11-05 | Codex (fix plan) | Further changes: refuse the forbidden headers again at send time, clear `ANTHROPIC_API_KEY` in the F05 test, resolve the call (404) before the expiry check, show the new expiry in the UI, keep the last received response when a later GET attempt fails, and stop Go's transparent re-send of a GET on a reused connection. | **Accepted**. For the last point Claude Code turned off connection reuse in the tool client, so every send is counted (D91). |
+| 2026-11-06 | Claude Code | While compiling `DESIGN.md`, suggested dropping "a lead can delete a teammate's agent" from the security risks, as a deliberate power rather than a risk. | **Rejected by the author** (D130): all four residual risks stay, each presented as a risk inherent to an agent platform with the mitigations already in place. |
+| 2026-11-06 | Claude Code | First timing script for the dev-mode SSE check failed (no `bc` in Git Bash), so a live run (run 3) produced no timing. | **Corrected** by Claude Code: the check was repeated with a Python client (run 4); the extra run is recorded in `PLAN.md`. |
 
 ## Notes on decisions
 
@@ -65,3 +67,4 @@ added as the work happens.
 | 2026-11-02 | Claude Code | When asked, recommended an own agent loop in Go with `openai-go` and `anthropic-sdk-go` over a Python service on the OpenAI Agents SDK. | Chosen by the author (D9). |
 | 2026-11-02 | Claude Code | When asked, recommended secret-free previews and records with response masking as a backup, instead of masking alone or withholding suspicious responses. | Chosen by the author (D33). |
 | 2026-11-02 | Claude Code | Proposed one option for each of the 17 B2b decision points raised by Codex (e.g. `tool_ids` on agents, composite team keys, `approval_revision`, the `409` confirmation flow for deleted tools). | All accepted by the author (D46–D57). |
+| 2026-11-06 | Claude Code | Proposed three scaling points for `DESIGN.md` not covered by a decision: master key in a KMS, SSO with per-team budgets and alerting, a per-team host allowlist with review of shared tools. | Accepted by the author (D131). |
