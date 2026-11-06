@@ -1,0 +1,438 @@
+[
+  {
+    "id": 1,
+    "event": "run_status",
+    "data": {
+      "status": "queued"
+    }
+  },
+  {
+    "id": 2,
+    "event": "run_status",
+    "data": {
+      "status": "running"
+    }
+  },
+  {
+    "id": 3,
+    "event": "usage",
+    "data": {
+      "model_call_id": 1,
+      "input_tokens": 506,
+      "output_tokens": 48,
+      "usage_status": "complete"
+    }
+  },
+  {
+    "id": 4,
+    "event": "tool_call",
+    "data": {
+      "id": 1,
+      "name": "read_repo_file",
+      "arguments": {
+        "owner": "Kaanistaken",
+        "path": "package.json",
+        "repo": "vodafone-case-sandbox"
+      },
+      "requires_approval": false,
+      "status": "approved",
+      "approval_revision": 1,
+      "approval_expires_at": null,
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/contents/package.json",
+        "headers": {
+          "Accept": "application/vnd.github.raw+json",
+          "User-Agent": "vodafone-case-agent-platform",
+          "X-Github-Api-Version": "2022-11-28"
+        }
+      }
+    }
+  },
+  {
+    "id": 5,
+    "event": "tool_call_status",
+    "data": {
+      "id": 1,
+      "status": "executing"
+    }
+  },
+  {
+    "id": 6,
+    "event": "tool_result",
+    "data": {
+      "id": 1,
+      "status": "succeeded",
+      "http_status": 200,
+      "reason_code": "",
+      "text": "HTTP 200 OK\nContent-Type: application/vnd.github.raw+json; charset=utf-8\n\n{\n  \"name\": \"vodafone-case-sandbox\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"description\": \"Test input for the dependency-check example agent. Pinned old versions with known advisories; nothing here is installed.\",\n  \"dependencies\": {\n    \"lodash\": \"4.17.15\",\n    \"minimist\": \"1.2.0\",\n    \"jsonwebtoken\": \"8.5.1\",\n    \"ms\": \"2.0.0\"\n  }\n}\n"
+    }
+  },
+  {
+    "id": 7,
+    "event": "usage",
+    "data": {
+      "model_call_id": 2,
+      "input_tokens": 696,
+      "output_tokens": 38,
+      "usage_status": "complete"
+    }
+  },
+  {
+    "id": 8,
+    "event": "tool_call",
+    "data": {
+      "id": 2,
+      "name": "osv_query",
+      "arguments": {
+        "name": "lodash",
+        "version": "4.17.15"
+      },
+      "requires_approval": false,
+      "status": "approved",
+      "approval_revision": 1,
+      "approval_expires_at": null,
+      "request": {
+        "method": "POST",
+        "url": "https://api.osv.dev/v1/query",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "package": {
+            "ecosystem": "npm",
+            "name": "lodash"
+          },
+          "version": "4.17.15"
+        }
+      }
+    }
+  },
+  {
+    "id": 9,
+    "event": "tool_call_status",
+    "data": {
+      "id": 2,
+      "status": "executing"
+    }
+  },
+  {
+    "id": 10,
+    "event": "tool_result",
+    "data": {
+      "id": 2,
+      "status": "succeeded",
+      "http_status": 200,
+      "reason_code": "",
+      "text": "HTTP 200 OK\nContent-Type: application/json\n\n{\"vulns\":[{\"id\":\"GHSA-29mw-wpgm-hmr9\",\"summary\":\"Regular Expression Denial of Service (ReDoS) in lodash\",\"details\":\"All versions of package lodash prior to 4.17.21 are vulnerable to Regular Expression Denial of Service (ReDoS) via the `toNumber`, `trim` and `trimEnd` functions. \\n\\nSteps to reproduce (provided by reporter Liyuan Chen):\\n```js\\nvar lo = require('lodash');\\n\\nfunction build_blank(n) {\\n    var ret = \\\"1\\\"\\n    for (var i = 0; i \\u003c n; i++) {\\n        ret += \\\" \\\"\\n    }\\n    return ret + \\\"1\\\";\\n}\\nvar s = build_blank(50000) var time0 = Date.now();\\nlo.trim(s) \\nvar time_cost0 = Date.now() - time0;\\nconsole.log(\\\"time_cost0: \\\" + time_cost0);\\nvar time1 = Date.now();\\nlo.toNumber(s) var time_cost1 = Date.now() - time1;\\nconsole.log(\\\"time_cost1: \\\" + time_cost1);\\nvar time2 = Date.now();\\nlo.trimEnd(s);\\nvar time_cost2 = Date.now() - time2;\\nconsole.log(\\\"time_cost2: \\\" + time_cost2);\\n```\",\"aliases\":[\"CVE-2020-28500\"],\"modified\":\"2025-09-29T21:12:31.102523Z\",\"published\":\"2022-01-06T20:30:46Z\",\"database_specific\":{\"severity\":\"MODERATE\",\"github_reviewed\":true,\"github_reviewed_at\":\"2021-03-19T22:45:28Z\",\"nvd_published_at\":\"2021-02-15T11:15:00Z\",\"cwe_ids\":[\"CWE-1333\",\"CWE-400\"]},\"references\":[{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2020-28500\"},{\"type\":\"WEB\",\"url\":\"https://github.com/github/advisory-database/pull/6139\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/pull/5065\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/pull/5065/commits/02906b8191d3c100c193fe6f7b27d1c40f200bb7\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/commit/c4847ebe7d14540bb28a8b932a9ce1b9ecbfee1a\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com/security-alerts/cpuoct2021.html\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com/security-alerts/cpujul2022.html\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com/security-alerts/cpujan2022.html\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com//security-alerts/cpujul2021.html\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JS-LODASH-1018905\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1074893\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWERGITHUBLODASH-1074895\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWER-1074892\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARS-1074894\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGFUJIONWEBJARS-1074896\"},{\"type\":\"WEB\",\"url\":\"https://security.netapp.com/advisory/ntap-20210312-0006\"},{\"type\":\"WEB\",\"url\":\"https://github.com/rubysec/ruby-advisory-db/blob/master/gems/lodash-rails/CVE-2020-28500.yml\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/blob/npm/trimEnd.js%23L8\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/lodash/lodash\"},{\"type\":\"WEB\",\"url\":\"https://cert-portal.siemens.com/productcert/pdf/ssa-637483.pdf\"}],\"affected\":[{\"package\":{\"name\":\"lodash\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.17.21\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/01/GHSA-29mw-wpgm-hmr9/GHSA-29mw-wpgm-hmr9.json\"}},{\"package\":{\"name\":\"lodash-es\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-es\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.17.21\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/01/GHSA-29mw-wpgm-hmr9/GHSA-29mw-wpgm-hmr9.json\"}},{\"package\":{\"name\":\"lodash.trimend\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.trimend\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"last_affected\":\"4.5.1\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/01/GHSA-29mw-wpgm-hmr9/GHSA-29mw-wpgm-hmr9.json\"}},{\"package\":{\"name\":\"lodash.trim\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.trim\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"last_affected\":\"4.5.1\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/01/GHSA-29mw-wpgm-hmr9/GHSA-29mw-wpgm-hmr9.json\"}},{\"package\":{\"name\":\"lodash-rails\",\"ecosystem\":\"RubyGems\",\"purl\":\"pkg:gem/lodash-rails\"},\"ranges\":[{\"type\":\"ECOSYSTEM\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.17.21\"}]}],\"versions\":[\"4.0.0\",\"4.11.2\",\"4.12.0\",\"4.13.1\",\"4.14.1\",\"4.15.0\",\"4.16.1\",\"4.16.3\",\"4.16.4\",\"4.16.6\",\"4.17.10\",\"4.17.11\",\"4.17.14\",\"4.17.15\",\"4.17.2\",\"4.17.4\",\"4.17.5\",\"4.3.0\",\"4.5.1\",\"4.6.1\"],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/01/GHSA-29mw-wpgm-hmr9/GHSA-29mw-wpgm-hmr9.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L\"}]},{\"id\":\"GHSA-35jh-r3h4-6jhm\",\"summary\":\"Command Injection in lodash\",\"details\":\"`lodash` versions prior to 4.17.21 are vulnerable to Command Injection via the template function.\",\"aliases\":[\"CVE-2021-23337\"],\"modified\":\"2026-10-17T02:55:38.085813876Z\",\"published\":\"2021-05-06T16:05:51Z\",\"database_specific\":{\"github_reviewed_at\":\"2021-03-31T23:59:26Z\",\"nvd_published_at\":\"2021-02-15T13:15:00Z\",\"cwe_ids\":[\"CWE-77\",\"CWE-94\"],\"severity\":\"HIGH\",\"github_reviewed\":true},\"references\":[{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2021-23337\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/commit/3469357cff396a26c363f8c1b5a91dde28ba4b1c\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com/security-alerts/cpuoct2021.html\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com/security-alerts/cpujul2022.html\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com/security-alerts/cpujan2022.html\"},{\"type\":\"WEB\",\"url\":\"https://www.oracle.com//security-alerts/cpujul2021.html\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JS-LODASH-1040724\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1074929\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWERGITHUBLODASH-1074931\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWER-1074928\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARS-1074930\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JAVA-ORGFUJIONWEBJARS-1074932\"},{\"type\":\"WEB\",\"url\":\"https://security.netapp.com/advisory/ntap-20210312-0006\"},{\"type\":\"WEB\",\"url\":\"https://github.com/rubysec/ruby-advisory-db/blob/master/gems/lodash-rails/CVE-2021-23337.yml\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/blob/ddfd9b11a0126db2302cb70ec9973b66baec0975/lodash.js#L14851\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/lodash/lodash\"},{\"type\":\"WEB\",\"url\":\"https://cert-portal.siemens.com/productcert/pdf/ssa-637483.pdf\"}],\"affected\":[{\"package\":{\"name\":\"lodash\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"4.17.21\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2021/05/GHSA-35jh-r3h4-6jhm/GHSA-35jh-r3h4-6jhm.json\"}},{\"package\":{\"name\":\"lodash-es\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-es\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"4.17.21\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2021/05/GHSA-35jh-r3h4-6jhm/GHSA-35jh-r3h4-6jhm.json\"}},{\"package\":{\"name\":\"lodash.template\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.template\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"last_affected\":\"4.5.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2021/05/GHSA-35jh-r3h4-6jhm/GHSA-35jh-r3h4-6jhm.json\"}},{\"package\":{\"name\":\"lodash-template\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-template\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"last_affected\":\"1.0.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2021/05/GHSA-35jh-r3h4-6jhm/GHSA-35jh-r3h4-6jhm.json\"}},{\"package\":{\"name\":\"lodash-rails\",\"ecosystem\":\"RubyGems\",\"purl\":\"pkg:gem/lodash-rails\"},\"ranges\":[{\"type\":\"ECOSYSTEM\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"4.17.21\"}]}],\"versions\":[\"0.10.0\",\"0.7.0\",\"0.8.1\",\"0.8.2\",\"0.9.0\",\"0.9.1\",\"0.9.2\",\"1.0.0.rc.1\",\"1.0.0.rc.2\",\"1.0.0.rc.3\",\"1.0.1\",\"1.1.0\",\"1.1.1\",\"1.2.0\",\"1.2.1\",\"1.3.1\",\"2.0.0\",\"2.1.0\",\"2.2.0\",\"2.2.1\",\"2.3.0\",\"2.4.0\",\"2.4.1\",\"3.1.0\",\"3.10.0\",\"3.10.1\",\"3.2.0\",\"3.3.0\",\"3.3.1\",\"3.3.1.1\",\"3.4.0\",\"3.5.0\",\"3.6.0\",\"3.7.0\",\"3.9.3\",\"4.0.0\",\"4.11.2\",\"4.12.0\",\"4.13.1\",\"4.14.1\",\"4.15.0\",\"4.16.1\",\"4.16.3\",\"4.16.4\",\"4.16.6\",\"4.17.10\",\"4.17.11\",\"4.17.14\",\"4.17.15\",\"4.17.2\",\"4.17.4\",\"4.17.5\",\"4.3.0\",\"4.5.1\",\"4.6.1\"],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2021/05/GHSA-35jh-r3h4-6jhm/GHSA-35jh-r3h4-6jhm.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H\"}]},{\"id\":\"GHSA-p6mc-m468-83gw\",\"summary\":\"Prototype Pollution in lodash\",\"details\":\"Versions of lodash prior to 4.17.19 are vulnerable to Prototype Pollution. The functions `pick`, `set`, `setWith`, `update`, `updateWith`, and `zipObjectDeep` allow a malicious user to modify the prototype of Object if the property identifiers are user-supplied. Being affected by this issue requires manipulating objects based on user-provided property values or arrays.\\n\\nThis vulnerability causes the addition or modification of an existing property that will exist on all objects and may lead to Denial of Service or Code Execution under specific circumstances.\",\"aliases\":[\"CVE-2020-8203\"],\"modified\":\"2025-08-12T21:56:17.174859Z\",\"published\":\"2020-07-15T19:15:48Z\",\"database_specific\":{\"github_reviewed\":true,\"github_reviewed_at\":\"2020-07-15T19:14:58Z\",\"nvd_published_at\":\"2020-07-15T17:15:00Z\",\"cwe_ids\":[\"CWE-1321\",\"CWE-770\"],\"severity\":\"HIGH\"},\"references\":[{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2020-8203\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/issues/4744\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/issues/4874\"},{\"type\":\"WEB\",\"url\":\"https://github.com/github/advisory-database/pull/2884\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/commit/c84fe82760fb2d3e03a63379b297a1cc1a2fce12\"},{\"type\":\"WEB\",\"url\":\"https://hackerone.com/reports/712065\"},{\"type\":\"WEB\",\"url\":\"https://hackerone.com/reports/864701\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/lodash/lodash\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/wiki/Changelog#v41719\"},{\"type\":\"WEB\",\"url\":\"https://github.com/rubysec/ruby-advisory-db/blob/master/gems/lodash-rails/CVE-2020-8203.yml\"},{\"type\":\"WEB\",\"url\":\"https://security.netapp.com/advisory/ntap-20200724-0006\"},{\"type\":\"WEB\",\"url\":\"https://web.archive.org/web/20210914001339/https://github.com/lodash/lodash/issues/4744\"}],\"affected\":[{\"package\":{\"name\":\"lodash\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"3.7.0\"},{\"fixed\":\"4.17.19\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}},{\"package\":{\"name\":\"lodash-es\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-es\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"3.7.0\"},{\"fixed\":\"4.17.20\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}},{\"package\":{\"name\":\"lodash.pick\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.pick\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"last_affected\":\"4.4.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}},{\"package\":{\"name\":\"lodash.set\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.set\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"3.7.0\"},{\"last_affected\":\"4.3.2\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}},{\"package\":{\"name\":\"lodash.setwith\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.setwith\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"last_affected\":\"4.3.2\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}},{\"package\":{\"name\":\"lodash.update\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.update\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"last_affected\":\"4.10.2\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}},{\"package\":{\"name\":\"lodash.updatewith\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.updatewith\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"last_affected\":\"4.10.2\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}},{\"package\":{\"name\":\"lodash-rails\",\"ecosystem\":\"RubyGems\",\"purl\":\"pkg:gem/lodash-rails\"},\"ranges\":[{\"type\":\"ECOSYSTEM\",\"events\":[{\"introduced\":\"3.7.0\"},{\"fixed\":\"4.17.19\"}]}],\"versions\":[\"3.10.0\",\"3.10.1\",\"3.7.0\",\"3.9.3\",\"4.0.0\",\"4.11.2\",\"4.12.0\",\"4.13.1\",\"4.14.1\",\"4.15.0\",\"4.16.1\",\"4.16.3\",\"4.16.4\",\"4.16.6\",\"4.17.10\",\"4.17.11\",\"4.17.14\",\"4.17.15\",\"4.17.2\",\"4.17.4\",\"4.17.5\",\"4.3.0\",\"4.5.1\",\"4.6.1\"],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/07/GHSA-p6mc-m468-83gw/GHSA-p6mc-m468-83gw.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:H\"}]},{\"id\":\"GHSA-r5fr-rjxr-66jc\",\"summary\":\"lodash vulnerable to Code Injection via `_.template` imports key names\",\"details\":\"### Impact\\n\\nThe fix for [CVE-2021-23337](https://github.com/advisories/GHSA-35jh-r3h4-6jhm) added validation for the `variable` option in `_.template` but did not apply the same validation to `options.imports` key names. Both paths flow into the same `Function()` constructor sink.\\n\\nWhen an application passes untrusted input as `options.imports` key names, an attacker can inject default-parameter expressions that execute arbitrary code at template compilation time.\\n\\nAdditionally, `_.template` uses `assignInWith` to merge imports, which enumerates inherited properties via `for..in`. If `Object.prototype` has been polluted by any other vector, the polluted keys are copied into the imports object and passed to `Function()`.\\n\\n### Patches\\n\\nUsers should upgrade to version 4.18.0.\\n\\nThe fix applies two changes:\\n1. Validate `importsKeys` against the existing `reForbiddenIdentifierChars` regex (same check already used for the `variable` option)\\n2. Replace `assignInWith` with `assignWith` when merging imports, so only own properties are enumerated\\n\\n### Workarounds\\n\\nDo not pass untrusted input as key names in `options.imports`. Only use developer-controlled, static key names.\",\"aliases\":[\"CVE-2026-4800\"],\"modified\":\"2026-10-17T02:56:15.633068434Z\",\"published\":\"2026-04-01T23:51:12Z\",\"database_specific\":{\"cwe_ids\":[\"CWE-94\"],\"severity\":\"HIGH\",\"github_reviewed\":true,\"github_reviewed_at\":\"2026-04-01T23:51:12Z\",\"nvd_published_at\":\"2026-03-31T20:16:29Z\"},\"references\":[{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/security/advisories/GHSA-r5fr-rjxr-66jc\"},{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2026-4800\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/commit/3469357cff396a26c363f8c1b5a91dde28ba4b1c\"},{\"type\":\"WEB\",\"url\":\"https://cna.openjsf.org/security-advisories.html\"},{\"type\":\"ADVISORY\",\"url\":\"https://github.com/advisories/GHSA-35jh-r3h4-6jhm\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/lodash/lodash\"}],\"affected\":[{\"package\":{\"name\":\"lodash\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.18.0\"}]}],\"database_specific\":{\"last_known_affected_version_range\":\"\\u003c= 4.17.23\",\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-r5fr-rjxr-66jc/GHSA-r5fr-rjxr-66jc.json\"}},{\"package\":{\"name\":\"lodash-es\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-es\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.18.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-r5fr-rjxr-66jc/GHSA-r5fr-rjxr-66jc.json\",\"last_known_affected_version_range\":\"\\u003c= 4.17.23\"}},{\"package\":{\"name\":\"lodash-amd\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-amd\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.18.0\"}]}],\"database_specific\":{\"last_known_affected_version_range\":\"\\u003c= 4.17.23\",\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-r5fr-rjxr-66jc/GHSA-r5fr-rjxr-66jc.json\"}},{\"package\":{\"name\":\"lodash.template\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.template\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.18.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-r5fr-rjxr-66jc/GHSA-r5fr-rjxr-66jc.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H\"}]},{\"id\":\"GHSA-xxjr-mmjv-4gpg\",\"summary\":\"Lodash has Prototype Pollution Vulnerability in `_.unset`, `_.omit`, and `_.pullAt` functions\",\"details\":\"### Impact\\n\\nThe `_.unset`, `_.omit`, and `_.pullAt` functions are vulnerable to prototype pollution. An attacker can pass crafted paths which cause Lodash to delete methods from global prototypes.\\n\\nThe issue permits deletion of properties but does not allow overwriting their original behavior.\\n\\n### Patches\\n\\nThe issue is patched from 4.17.23 to 4.18.0 depending on the package: `lodash`, `lodash-es`, and `lodash-amd` in 4.17.23, and the standalone `lodash.unset` and `lodash.omit` packages in 4.18.0.\\n\\n### Workarounds\\n\\nNone. Upgrade to the patched version.\",\"aliases\":[\"CVE-2025-13465\"],\"modified\":\"2026-11-04T03:15:10.832238351Z\",\"published\":\"2026-01-21T23:01:22Z\",\"database_specific\":{\"cwe_ids\":[\"CWE-1321\"],\"severity\":\"MODERATE\",\"github_reviewed\":true,\"github_reviewed_at\":\"2026-01-21T23:01:22Z\",\"nvd_published_at\":\"2026-01-21T20:16:05Z\"},\"references\":[{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/security/advisories/GHSA-xxjr-mmjv-4gpg\"},{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2025-13465\"},{\"type\":\"WEB\",\"url\":\"https://github.com/lodash/lodash/commit/edadd452146f7e4bad4ea684e955708931d84d81\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:41941\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:41928\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:41064\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:40984\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:40945\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:40138\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:40118\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3962\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3960\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3958\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3884\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3874\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3870\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3869\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3825\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3782\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3710\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:36882\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:36651\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:34608\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3422\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:34100\"},{\"type\":\"WEB\",\"url\":\"https://security.access.redhat.com/data/csaf/v2/vex/2025/cve-2025-13465.json\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/lodash/lodash\"},{\"type\":\"WEB\",\"url\":\"https://cna.openjsf.org/security-advisories.html\"},{\"type\":\"WEB\",\"url\":\"https://cert-portal.siemens.com/productcert/html/ssa-253495.html\"},{\"type\":\"WEB\",\"url\":\"https://bugzilla.redhat.com/show_bug.cgi?id=2431740\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/security/cve/CVE-2025-13465\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:9848\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:8229\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:8218\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:6567\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:6497\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:6288\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:6192\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:57487\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:5636\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:5633\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:4782\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:4630\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:4467\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:4466\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:4423\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:41944\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:24331\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:21658\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2149\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2148\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2147\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2145\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2119\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2078\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:20088\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:20042\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:19712\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:18868\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:18480\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:1845\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:17469\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:15091\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:14871\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:14870\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:14774\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:13829\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:13548\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:13542\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:11414\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:33371\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:33154\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:3087\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2990\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2984\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2926\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2900\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2819\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2818\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2817\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2816\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2694\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2675\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2672\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2661\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2651\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:25089\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2484\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2469\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2465\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2462\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2452\"},{\"type\":\"WEB\",\"url\":\"https://access.redhat.com/errata/RHSA-2026:2438\"}],\"affected\":[{\"package\":{\"name\":\"lodash\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.17.23\"}]}],\"database_specific\":{\"last_known_affected_version_range\":\"\\u003c= 4.17.22\",\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/01/GHSA-xxjr-mmjv-4gpg/GHSA-xxjr-mmjv-4gpg.json\"}},{\"package\":{\"name\":\"lodash-amd\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-amd\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.17.23\"}]}],\"database_specific\":{\"last_known_affected_version_range\":\"\\u003c= 4.17.22\",\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/01/GHSA-xxjr-mmjv-4gpg/GHSA-xxjr-mmjv-4gpg.json\"}},{\"package\":{\"name\":\"lodash-es\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash-es\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.17.23\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/01/GHSA-xxjr-mmjv-4gpg/GHSA-xxjr-mmjv-4gpg.json\"}},{\"package\":{\"name\":\"lodash.omit\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.omit\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.18.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/01/GHSA-xxjr-mmjv-4gpg/GHSA-xxjr-mmjv-4gpg.json\"}},{\"package\":{\"name\":\"lodash.unset\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/lodash.unset\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"4.0.0\"},{\"fixed\":\"4.18.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/01/GHSA-xxjr-mmjv-4gpg/GHSA-xxjr-mmjv-4gpg.json\"}}],\"schema_version\":\"1.9.2\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L\"},{\"type\":\"CVSS_V4\",\"score\":\"CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:L/SC:H/SI:H/SA:H/E:P\"}]}]}"
+    }
+  },
+  {
+    "id": 11,
+    "event": "usage",
+    "data": {
+      "model_call_id": 3,
+      "input_tokens": 10188,
+      "output_tokens": 28,
+      "usage_status": "complete"
+    }
+  },
+  {
+    "id": 12,
+    "event": "tool_call",
+    "data": {
+      "id": 3,
+      "name": "osv_query",
+      "arguments": {
+        "name": "minimist",
+        "version": "1.2.0"
+      },
+      "requires_approval": false,
+      "status": "approved",
+      "approval_revision": 1,
+      "approval_expires_at": null,
+      "request": {
+        "method": "POST",
+        "url": "https://api.osv.dev/v1/query",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "package": {
+            "ecosystem": "npm",
+            "name": "minimist"
+          },
+          "version": "1.2.0"
+        }
+      }
+    }
+  },
+  {
+    "id": 13,
+    "event": "tool_call_status",
+    "data": {
+      "id": 3,
+      "status": "executing"
+    }
+  },
+  {
+    "id": 14,
+    "event": "tool_result",
+    "data": {
+      "id": 3,
+      "status": "succeeded",
+      "http_status": 200,
+      "reason_code": "",
+      "text": "HTTP 200 OK\nContent-Type: application/json\n\n{\"vulns\":[{\"id\":\"GHSA-vh95-rmgr-6w4m\",\"summary\":\"Prototype Pollution in minimist\",\"details\":\"Affected versions of `minimist` are vulnerable to prototype pollution. Arguments are not properly sanitized, allowing an attacker to modify the prototype of `Object`, causing the addition or modification of an existing property that will exist on all objects.  \\nParsing the argument `--__proto__.y=Polluted` adds a `y` property with value `Polluted` to all objects. The argument `--__proto__=Polluted` raises and uncaught error and crashes the application.  \\nThis is exploitable if attackers have control over the arguments being passed to `minimist`.\\n\\n\\n## Recommendation\\n\\nUpgrade to versions 0.2.1, 1.2.3 or later.\",\"aliases\":[\"CVE-2020-7598\"],\"modified\":\"2026-03-13T22:11:31.390433Z\",\"published\":\"2020-04-03T21:48:32Z\",\"database_specific\":{\"severity\":\"MODERATE\",\"github_reviewed\":true,\"github_reviewed_at\":\"2020-04-03T21:42:08Z\",\"nvd_published_at\":\"2020-03-11T23:15:00Z\",\"cwe_ids\":[\"CWE-1321\"]},\"references\":[{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2020-7598\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/10bd4cdf49d9686d48214be9d579a9cdfda37c68\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/38a4d1caead72ef99e824bb420a2528eec03d9ab\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/4cf1354839cb972e38496d35e12f806eea92c11f#diff-a1e0ee62c91705696ddb71aa30ad4f95\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/63e7ed05aa4b1889ec2f3b196426db4500cbda94\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/substack/minimist\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JS-MINIMIST-559764\"},{\"type\":\"WEB\",\"url\":\"https://www.npmjs.com/advisories/1179\"},{\"type\":\"WEB\",\"url\":\"http://lists.opensuse.org/opensuse-security-announce/2020-06/msg00024.html\"}],\"affected\":[{\"package\":{\"name\":\"minimist\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/minimist\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"0.2.1\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/04/GHSA-vh95-rmgr-6w4m/GHSA-vh95-rmgr-6w4m.json\"}},{\"package\":{\"name\":\"minimist\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/minimist\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"1.0.0\"},{\"fixed\":\"1.2.3\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/04/GHSA-vh95-rmgr-6w4m/GHSA-vh95-rmgr-6w4m.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L\"}]},{\"id\":\"GHSA-xvch-5gv4-984h\",\"summary\":\"Prototype Pollution in minimist\",\"details\":\"Minimist prior to 1.2.6 and 0.2.4 is vulnerable to Prototype Pollution via file `index.js`, function `setKey()` (lines 69-95).\",\"aliases\":[\"CVE-2021-44906\"],\"modified\":\"2026-03-13T22:11:59.523514Z\",\"published\":\"2022-03-18T00:01:09Z\",\"database_specific\":{\"github_reviewed\":true,\"github_reviewed_at\":\"2022-03-18T23:13:40Z\",\"nvd_published_at\":\"2022-03-17T16:15:00Z\",\"cwe_ids\":[\"CWE-1321\"],\"severity\":\"CRITICAL\"},\"references\":[{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2021-44906\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/issues/11\"},{\"type\":\"WEB\",\"url\":\"https://github.com/substack/minimist/issues/164\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/pull/24\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/34e20b8461118608703d6485326abbb8e35e1703\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/bc8ecee43875261f4f17eb20b1243d3ed15e70eb\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/c2b981977fa834b223b408cfb860f933c9811e4d\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commit/ef9153fc52b6cea0744b2239921c5dcae4697f11\"},{\"type\":\"WEB\",\"url\":\"https://github.com/Marynk/JavaScript-vulnerability-detection/blob/main/minimist%20PoC.zip\"},{\"type\":\"WEB\",\"url\":\"https://github.com/minimistjs/minimist/commits/v0.2.4\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/substack/minimist\"},{\"type\":\"WEB\",\"url\":\"https://github.com/substack/minimist/blob/master/index.js#L69\"},{\"type\":\"WEB\",\"url\":\"https://security.netapp.com/advisory/ntap-20240621-0006\"},{\"type\":\"WEB\",\"url\":\"https://snyk.io/vuln/SNYK-JS-MINIMIST-559764\"},{\"type\":\"WEB\",\"url\":\"https://stackoverflow.com/questions/8588563/adding-custom-properties-to-a-function/20278068#20278068\"}],\"affected\":[{\"package\":{\"name\":\"minimist\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/minimist\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"1.0.0\"},{\"fixed\":\"1.2.6\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/03/GHSA-xvch-5gv4-984h/GHSA-xvch-5gv4-984h.json\"}},{\"package\":{\"name\":\"minimist\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/minimist\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"0.2.4\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/03/GHSA-xvch-5gv4-984h/GHSA-xvch-5gv4-984h.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H\"}]}]}"
+    }
+  },
+  {
+    "id": 15,
+    "event": "usage",
+    "data": {
+      "model_call_id": 4,
+      "input_tokens": 11972,
+      "output_tokens": 27,
+      "usage_status": "complete"
+    }
+  },
+  {
+    "id": 16,
+    "event": "tool_call",
+    "data": {
+      "id": 4,
+      "name": "osv_query",
+      "arguments": {
+        "name": "jsonwebtoken",
+        "version": "8.5.1"
+      },
+      "requires_approval": false,
+      "status": "approved",
+      "approval_revision": 1,
+      "approval_expires_at": null,
+      "request": {
+        "method": "POST",
+        "url": "https://api.osv.dev/v1/query",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "package": {
+            "ecosystem": "npm",
+            "name": "jsonwebtoken"
+          },
+          "version": "8.5.1"
+        }
+      }
+    }
+  },
+  {
+    "id": 17,
+    "event": "tool_call_status",
+    "data": {
+      "id": 4,
+      "status": "executing"
+    }
+  },
+  {
+    "id": 18,
+    "event": "tool_result",
+    "data": {
+      "id": 4,
+      "status": "succeeded",
+      "http_status": 200,
+      "reason_code": "",
+      "text": "HTTP 200 OK\nContent-Type: application/json\n\n{\"vulns\":[{\"id\":\"GHSA-8cf7-32gw-wr33\",\"summary\":\"jsonwebtoken unrestricted key type could lead to legacy keys usage \",\"details\":\"# Overview\\n\\nVersions `\\u003c=8.5.1` of `jsonwebtoken` library could be misconfigured so that legacy, insecure key types are used for signature verification. For example, DSA keys could be used with the RS256 algorithm. \\n\\n# Am I affected?\\n\\nYou are affected if you are using an algorithm and a key type other than the combinations mentioned below\\n\\n| Key type |  algorithm                                    |\\n|----------|------------------------------------------|\\n| ec           | ES256, ES384, ES512                      |\\n| rsa          | RS256, RS384, RS512, PS256, PS384, PS512 |\\n| rsa-pss  | PS256, PS384, PS512                      |\\n\\nAnd for Elliptic Curve algorithms:\\n\\n| `alg` | Curve      |\\n|-------|------------|\\n| ES256 | prime256v1 |\\n| ES384 | secp384r1  |\\n| ES512 | secp521r1  |\\n\\n# How do I fix it?\\n\\nUpdate to version 9.0.0. This version validates for asymmetric key type and algorithm combinations. Please refer to the above mentioned algorithm / key type combinations for the valid secure configuration. After updating to version 9.0.0, If you still intend to continue with signing or verifying tokens using invalid key type/algorithm value combinations, you’ll need to set the `allowInvalidAsymmetricKeyTypes` option to `true` in the `sign()` and/or `verify()` functions.\\n\\n# Will the fix impact my users?\\n\\nThere will be no impact, if you update to version 9.0.0 and you already use a valid secure combination of key type and algorithm. Otherwise,  use the  `allowInvalidAsymmetricKeyTypes` option  to `true` in the `sign()` and `verify()` functions to continue usage of invalid key type/algorithm combination in 9.0.0 for legacy compatibility. \\n\\n\",\"aliases\":[\"CVE-2022-23539\"],\"modified\":\"2024-06-24T21:23:38Z\",\"published\":\"2022-12-22T03:32:22Z\",\"database_specific\":{\"severity\":\"HIGH\",\"github_reviewed\":true,\"github_reviewed_at\":\"2022-12-22T03:32:22Z\",\"nvd_published_at\":\"2022-12-23T00:15:00Z\",\"cwe_ids\":[\"CWE-327\"]},\"references\":[{\"type\":\"WEB\",\"url\":\"https://github.com/auth0/node-jsonwebtoken/security/advisories/GHSA-8cf7-32gw-wr33\"},{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2022-23539\"},{\"type\":\"WEB\",\"url\":\"https://github.com/auth0/node-jsonwebtoken/commit/e1fa9dcc12054a8681db4e6373da1b30cf7016e3\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/auth0/node-jsonwebtoken\"},{\"type\":\"WEB\",\"url\":\"https://security.netapp.com/advisory/ntap-20240621-0007\"}],\"affected\":[{\"package\":{\"name\":\"jsonwebtoken\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/jsonwebtoken\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"9.0.0\"}]}],\"database_specific\":{\"last_known_affected_version_range\":\"\\u003c= 8.5.1\",\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/12/GHSA-8cf7-32gw-wr33/GHSA-8cf7-32gw-wr33.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N\"}]},{\"id\":\"GHSA-hjrf-2m68-5959\",\"summary\":\"jsonwebtoken's insecure implementation of key retrieval function could lead to Forgeable Public/Private Tokens from RSA to HMAC\",\"details\":\"# Overview\\n\\nVersions `\\u003c=8.5.1` of `jsonwebtoken` library can be misconfigured so that passing a poorly implemented key retrieval function (referring to the `secretOrPublicKey` argument from the [readme link](https://github.com/auth0/node-jsonwebtoken#jwtverifytoken-secretorpublickey-options-callback)) will result in incorrect verification of tokens. There is a possibility of using a different algorithm and key combination in verification  than the one that was used to sign the tokens. Specifically, tokens signed with an asymmetric public key could be verified with a symmetric HS256 algorithm. This can lead to successful validation of forged tokens. \\n\\n# Am I affected?\\n\\nYou will be affected if your application is supporting usage of both symmetric key and asymmetric key in jwt.verify() implementation with the same key retrieval function. \\n\\n# How do I fix it?\\n \\nUpdate to version 9.0.0.\\n\\n# Will the fix impact my users?\\n\\nThere is no impact for end users\",\"aliases\":[\"CVE-2022-23541\"],\"modified\":\"2024-06-24T21:24:06Z\",\"published\":\"2022-12-22T03:33:19Z\",\"database_specific\":{\"github_reviewed\":true,\"github_reviewed_at\":\"2022-12-22T03:33:19Z\",\"nvd_published_at\":\"2022-12-22T18:15:00Z\",\"cwe_ids\":[\"CWE-1259\",\"CWE-287\"],\"severity\":\"MODERATE\"},\"references\":[{\"type\":\"WEB\",\"url\":\"https://github.com/auth0/node-jsonwebtoken/security/advisories/GHSA-hjrf-2m68-5959\"},{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2022-23541\"},{\"type\":\"WEB\",\"url\":\"https://github.com/auth0/node-jsonwebtoken/commit/e1fa9dcc12054a8681db4e6373da1b30cf7016e3\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/auth0/node-jsonwebtoken\"},{\"type\":\"WEB\",\"url\":\"https://github.com/auth0/node-jsonwebtoken/releases/tag/v9.0.0\"},{\"type\":\"WEB\",\"url\":\"https://security.netapp.com/advisory/ntap-20240621-0007\"}],\"affected\":[{\"package\":{\"name\":\"jsonwebtoken\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/jsonwebtoken\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"9.0.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/12/GHSA-hjrf-2m68-5959/GHSA-hjrf-2m68-5959.json\",\"last_known_affected_version_range\":\"\\u003c= 8.5.1\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:L\"}]},{\"id\":\"GHSA-qwph-4952-7xr6\",\"summary\":\"jsonwebtoken vulnerable to signature validation bypass due to insecure default algorithm in jwt.verify()\",\"details\":\"# Overview\\n\\nIn versions \\u003c=8.5.1 of jsonwebtoken library, lack of algorithm definition and a falsy secret or key in the `jwt.verify()` function can lead to signature validation bypass due to defaulting to the `none` algorithm for signature verification.\\n\\n# Am I affected?\\nYou will be affected if all the following are true in the `jwt.verify()` function:\\n- a token with no signature is received\\n- no algorithms are specified \\n- a falsy (e.g. null, false, undefined) secret or key is passed \\n\\n# How do I fix it?\\n \\nUpdate to version 9.0.0 which removes the default support for the none algorithm in the `jwt.verify()` method. \\n\\n# Will the fix impact my users?\\n\\nThere will be no impact, if you update to version 9.0.0 and you don’t need to allow for the `none` algorithm. If you need 'none' algorithm, you have to explicitly specify that in `jwt.verify()` options.\",\"aliases\":[\"CVE-2022-23540\"],\"modified\":\"2025-02-13T18:33:13Z\",\"published\":\"2022-12-22T03:32:59Z\",\"database_specific\":{\"cwe_ids\":[\"CWE-287\",\"CWE-327\",\"CWE-347\"],\"severity\":\"MODERATE\",\"github_reviewed\":true,\"github_reviewed_at\":\"2022-12-22T03:32:59Z\",\"nvd_published_at\":\"2022-12-22T19:15:00Z\"},\"references\":[{\"type\":\"WEB\",\"url\":\"https://github.com/auth0/node-jsonwebtoken/security/advisories/GHSA-qwph-4952-7xr6\"},{\"type\":\"ADVISORY\",\"url\":\"https://nvd.nist.gov/vuln/detail/CVE-2022-23540\"},{\"type\":\"WEB\",\"url\":\"https://github.com/auth0/node-jsonwebtoken/commit/e1fa9dcc12054a8681db4e6373da1b30cf7016e3\"},{\"type\":\"PACKAGE\",\"url\":\"https://github.com/auth0/node-jsonwebtoken\"},{\"type\":\"WEB\",\"url\":\"https://security.netapp.com/advisory/ntap-20240621-0007\"}],\"affected\":[{\"package\":{\"name\":\"jsonwebtoken\",\"ecosystem\":\"npm\",\"purl\":\"pkg:npm/jsonwebtoken\"},\"ranges\":[{\"type\":\"SEMVER\",\"events\":[{\"introduced\":\"0\"},{\"fixed\":\"9.0.0\"}]}],\"database_specific\":{\"source\":\"https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/12/GHSA-qwph-4952-7xr6/GHSA-qwph-4952-7xr6.json\"}}],\"schema_version\":\"1.9.0\",\"severity\":[{\"type\":\"CVSS_V3\",\"score\":\"CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:H/A:L\"}]}]}"
+    }
+  },
+  {
+    "id": 19,
+    "event": "usage",
+    "data": {
+      "model_call_id": 5,
+      "input_tokens": 14319,
+      "output_tokens": 27,
+      "usage_status": "complete"
+    }
+  },
+  {
+    "id": 20,
+    "event": "tool_call",
+    "data": {
+      "id": 5,
+      "name": "osv_query",
+      "arguments": {
+        "name": "ms",
+        "version": "2.0.0"
+      },
+      "requires_approval": false,
+      "status": "approved",
+      "approval_revision": 1,
+      "approval_expires_at": null,
+      "request": {
+        "method": "POST",
+        "url": "https://api.osv.dev/v1/query",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "package": {
+            "ecosystem": "npm",
+            "name": "ms"
+          },
+          "version": "2.0.0"
+        }
+      }
+    }
+  },
+  {
+    "id": 21,
+    "event": "tool_call_status",
+    "data": {
+      "id": 5,
+      "status": "executing"
+    }
+  },
+  {
+    "id": 22,
+    "event": "tool_result",
+    "data": {
+      "id": 5,
+      "status": "succeeded",
+      "http_status": 200,
+      "reason_code": "",
+      "text": "HTTP 200 OK\nContent-Type: application/json\n\n{}"
+    }
+  },
+  {
+    "id": 23,
+    "event": "usage",
+    "data": {
+      "model_call_id": 6,
+      "input_tokens": 14370,
+      "output_tokens": 737,
+      "usage_status": "complete"
+    }
+  },
+  {
+    "id": 24,
+    "event": "tool_call",
+    "data": {
+      "id": 6,
+      "name": "create_github_issue",
+      "arguments": {
+        "body": "## Dependency vulnerability report\n\nChecked the direct dependencies listed in `package.json` against OSV. Three of four packages returned known advisories.\n\n| Package | Version | Advisory IDs | Severity | Fixed version(s) reported by OSV |\n|---|---:|---|---|---|\n| `lodash` | `4.17.15` | GHSA-29mw-wpgm-hmr9 (CVE-2020-28500); GHSA-35jh-r3h4-6jhm (CVE-2021-23337); GHSA-p6mc-m468-83gw (CVE-2020-8203); GHSA-r5fr-rjxr-66jc (CVE-2026-4800); GHSA-xxjr-mmjv-4gpg (CVE-2025-13465) | Moderate; High; High; High; Moderate | 4.17.21; 4.17.21; 4.17.19; 4.18.0; 4.17.23 |\n| `minimist` | `1.2.0` | GHSA-vh95-rmgr-6w4m (CVE-2020-7598); GHSA-xvch-5gv4-984h (CVE-2021-44906) | Moderate; Critical | 1.2.3; 1.2.6 |\n| `jsonwebtoken` | `8.5.1` | GHSA-8cf7-32gw-wr33 (CVE-2022-23539); GHSA-hjrf-2m68-5959 (CVE-2022-23541); GHSA-qwph-4952-7xr6 (CVE-2022-23540) | High; Moderate; Moderate | 9.0.0; 9.0.0; 9.0.0 |\n\n### Packages with no known advisories\n\n- `ms` (`2.0.0`)",
+        "owner": "Kaanistaken",
+        "repo": "vodafone-case-sandbox",
+        "title": "Dependency check: 3 of 4 packages have known vulnerabilities"
+      },
+      "requires_approval": true,
+      "status": "pending_approval",
+      "approval_revision": 1,
+      "approval_expires_at": "2026-11-09T17:20:03.567Z",
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues",
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "Authorization": "Bearer ***{{secret.GITHUB_TOKEN}}",
+          "Content-Type": "application/json",
+          "User-Agent": "vodafone-case-agent-platform",
+          "X-Github-Api-Version": "2022-11-28"
+        },
+        "body": {
+          "body": "## Dependency vulnerability report\n\nChecked the direct dependencies listed in `package.json` against OSV. Three of four packages returned known advisories.\n\n| Package | Version | Advisory IDs | Severity | Fixed version(s) reported by OSV |\n|---|---:|---|---|---|\n| `lodash` | `4.17.15` | GHSA-29mw-wpgm-hmr9 (CVE-2020-28500); GHSA-35jh-r3h4-6jhm (CVE-2021-23337); GHSA-p6mc-m468-83gw (CVE-2020-8203); GHSA-r5fr-rjxr-66jc (CVE-2026-4800); GHSA-xxjr-mmjv-4gpg (CVE-2025-13465) | Moderate; High; High; High; Moderate | 4.17.21; 4.17.21; 4.17.19; 4.18.0; 4.17.23 |\n| `minimist` | `1.2.0` | GHSA-vh95-rmgr-6w4m (CVE-2020-7598); GHSA-xvch-5gv4-984h (CVE-2021-44906) | Moderate; Critical | 1.2.3; 1.2.6 |\n| `jsonwebtoken` | `8.5.1` | GHSA-8cf7-32gw-wr33 (CVE-2022-23539); GHSA-hjrf-2m68-5959 (CVE-2022-23541); GHSA-qwph-4952-7xr6 (CVE-2022-23540) | High; Moderate; Moderate | 9.0.0; 9.0.0; 9.0.0 |\n\n### Packages with no known advisories\n\n- `ms` (`2.0.0`)",
+          "title": "Dependency check: 3 of 4 packages have known vulnerabilities"
+        }
+      }
+    }
+  },
+  {
+    "id": 25,
+    "event": "run_status",
+    "data": {
+      "status": "waiting_approval"
+    }
+  },
+  {
+    "id": 26,
+    "event": "tool_call_status",
+    "data": {
+      "id": 6,
+      "status": "approved"
+    }
+  },
+  {
+    "id": 27,
+    "event": "run_status",
+    "data": {
+      "status": "running"
+    }
+  },
+  {
+    "id": 28,
+    "event": "tool_call_status",
+    "data": {
+      "id": 6,
+      "status": "executing"
+    }
+  },
+  {
+    "id": 29,
+    "event": "tool_result",
+    "data": {
+      "id": 6,
+      "status": "succeeded",
+      "http_status": 201,
+      "reason_code": "",
+      "text": "HTTP 201 Created\nContent-Type: application/json; charset=utf-8\nLocation: https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues/1\n\n{\"url\":\"https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues/1\",\"repository_url\":\"https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox\",\"labels_url\":\"https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues/1/labels{/name}\",\"comments_url\":\"https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues/1/comments\",\"events_url\":\"https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues/1/events\",\"html_url\":\"https://github.com/Kaanistaken/vodafone-case-sandbox/issues/1\",\"id\":6247350474,\"node_id\":\"I_kwDOVlbjNc8AAAABdF8Ayg\",\"number\":1,\"title\":\"Dependency check: 3 of 4 packages have known vulnerabilities\",\"user\":{\"login\":\"Kaanistaken\",\"id\":189612131,\"node_id\":\"U_kgDOC01AYw\",\"avatar_url\":\"https://avatars.githubusercontent.com/u/189612131?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/Kaanistaken\",\"html_url\":\"https://github.com/Kaanistaken\",\"followers_url\":\"https://api.github.com/users/Kaanistaken/followers\",\"following_url\":\"https://api.github.com/users/Kaanistaken/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/Kaanistaken/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/Kaanistaken/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/Kaanistaken/subscriptions\",\"organizations_url\":\"https://api.github.com/users/Kaanistaken/orgs\",\"repos_url\":\"https://api.github.com/users/Kaanistaken/repos\",\"events_url\":\"https://api.github.com/users/Kaanistaken/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/Kaanistaken/received_events\",\"type\":\"User\",\"user_view_type\":\"public\",\"site_admin\":false},\"labels\":[],\"state\":\"open\",\"locked\":false,\"assignees\":[],\"milestone\":null,\"comments\":0,\"created_at\":\"2026-11-06T17:20:08Z\",\"updated_at\":\"2026-11-06T17:20:08Z\",\"closed_at\":null,\"assignee\":null,\"author_association\":\"OWNER\",\"active_lock_reason\":null,\"sub_issues_summary\":{\"total\":0,\"completed\":0,\"percent_completed\":0},\"issue_dependencies_summary\":{\"blocked_by\":0,\"total_blocked_by\":0,\"blocking\":0,\"total_blocking\":0},\"body\":\"## Dependency vulnerability report\\n\\nChecked the direct dependencies listed in `package.json` against OSV. Three of four packages returned known advisories.\\n\\n| Package | Version | Advisory IDs | Severity | Fixed version(s) reported by OSV |\\n|---|---:|---|---|---|\\n| `lodash` | `4.17.15` | GHSA-29mw-wpgm-hmr9 (CVE-2020-28500); GHSA-35jh-r3h4-6jhm (CVE-2021-23337); GHSA-p6mc-m468-83gw (CVE-2020-8203); GHSA-r5fr-rjxr-66jc (CVE-2026-4800); GHSA-xxjr-mmjv-4gpg (CVE-2025-13465) | Moderate; High; High; High; Moderate | 4.17.21; 4.17.21; 4.17.19; 4.18.0; 4.17.23 |\\n| `minimist` | `1.2.0` | GHSA-vh95-rmgr-6w4m (CVE-2020-7598); GHSA-xvch-5gv4-984h (CVE-2021-44906) | Moderate; Critical | 1.2.3; 1.2.6 |\\n| `jsonwebtoken` | `8.5.1` | GHSA-8cf7-32gw-wr33 (CVE-2022-23539); GHSA-hjrf-2m68-5959 (CVE-2022-23541); GHSA-qwph-4952-7xr6 (CVE-2022-23540) | High; Moderate; Moderate | 9.0.0; 9.0.0; 9.0.0 |\\n\\n### Packages with no known advisories\\n\\n- `ms` (`2.0.0`)\",\"closed_by\":null,\"reactions\":{\"url\":\"https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues/1/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"timeline_url\":\"https://api.github.com/repos/Kaanistaken/vodafone-case-sandbox/issues/1/timeline\",\"performed_via_github_app\":null,\"state_reason\":null,\"pinned_comment\":null}"
+    }
+  },
+  {
+    "id": 30,
+    "event": "text_delta",
+    "data": {
+      "model_call_id": 7,
+      "attempt": 1,
+      "text": "Checked"
+    }
+  },
+  {
+    "id": 31,
+    "event": "text_delta",
+    "data": {
+      "model_call_id": 7,
+      "attempt": 1,
+      "text": " 4 dependencies: 3 have known advisories; `ms` has none reported. I opened a GitHub issue with the findings: https://github.com/Kaanist"
+    }
+  },
+  {
+    "id": 32,
+    "event": "text_delta",
+    "data": {
+      "model_call_id": 7,
+      "attempt": 1,
+      "text": "aken/vodafone-case-sandbox/issues/1"
+    }
+  },
+  {
+    "id": 33,
+    "event": "usage",
+    "data": {
+      "model_call_id": 7,
+      "input_tokens": 16280,
+      "output_tokens": 50,
+      "usage_status": "complete"
+    }
+  },
+  {
+    "id": 34,
+    "event": "run_finished",
+    "data": {
+      "status": "succeeded",
+      "error_code": "",
+      "error_message": "",
+      "final_output": "Checked 4 dependencies: 3 have known advisories; `ms` has none reported. I opened a GitHub issue with the findings: https://github.com/Kaanistaken/vodafone-case-sandbox/issues/1"
+    }
+  }
+]
