@@ -72,8 +72,8 @@ compression is turned off so SSE is not buffered by the proxy (D123), and `next 
   measures already in place (D130):
   - *Prompt injection through tool responses:* a response can contain text that reads like instructions to the
     model. Mitigations: the model never sees a secret (D33); secrets go only to their bound host (D32); private
-    addresses cannot be reached (D81); every side effect waits for approval and shows the exact request (R5); the
-    system prompt treats tool results as data. Dedicated injection detection is a nice-to-have left out (D111).
+    addresses cannot be reached (D81); every call to a tool marked `requires_approval` (in the example, the issue
+    tool) waits for approval and shows the exact request (R5); the system prompt treats tool results as data. Dedicated injection detection is a nice-to-have left out (D111).
   - *Master key plus database file:* anyone holding both can decrypt the stored keys, as with any encryption at rest.
     Mitigations: the key is kept outside the database; associated data bound to each row (D14, D31); the server
     refuses to start with a wrong key; a key version on every row allows rotation (D15).

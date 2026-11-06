@@ -145,6 +145,8 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D129 | 2026-11-06 | `next dev` (Next.js 16) writes `web/AGENTS.md`, a note for AI agents; it is ignored in `.gitignore` and not committed. `web/next-env.d.ts` switches to `.next/dev/` paths in dev mode and is restored before a commit. | The author's choice; generated tooling output is not part of the project. |
 | D130 | 2026-11-06 | `DESIGN.md` security section: the four residual risks stay (prompt injection through tool responses, master key plus database file, seeded passwords in `.env`, a lead deleting a teammate's agent). Each is presented as a risk inherent to an agent platform, together with the mitigations already in place. | The author's choice: residual risks are stated honestly, not as defects. |
 | D131 | 2026-11-06 | `DESIGN.md` scaling section also lists, as changes at several thousand developers: the master key moves from `.env` to a KMS; SSO instead of seeded passwords, with per-team budgets and alerting on the usage records; a per-team host allowlist and review of shared tools. | The author's choice (proposed by Claude Code while compiling `DESIGN.md`). |
+| D132 | 2026-11-06 | Decision on the fifth code review (`docs/reviews/2026-11-06-code-5/`): fix F01 (medium: `DESIGN.md` said every side effect waits for approval; only tools marked `requires_approval` do). The low findings F02–F06 and the key-rotation wording suggestion are left as they are; the public OSV researcher attribution in the recorded run stays. Spend including run 5 is still about USD 0.01 per provider (author). | The author's choice: fix the overstatement, skip the low documentation findings. |
+| D133 | 2026-11-06 | The F01 fix of D132 (one sentence in `DESIGN.md` plus records) is pushed **without** a Codex review — a one-off exception to D117. | The author's choice: a one-line documentation fix at the end of the day. |
 
 ## Planning batches
 
@@ -173,7 +175,7 @@ options and their trade-offs → the author decides → the batch is sent to
 | R6 | Teams are isolated (server-enforced) | Implemented | handlers scope every query by the session's team; composite keys (D46); `TestTeamAndUsageAuthorization` |
 | R7 | Each user brings their own model key | Implemented | `crypto/`, `api/auth.go`; `crypto_test.go`, adapter tests (environment keys ignored) |
 | R8 | Provider-agnostic and metered | Implemented; verified live with `gpt-6-luna` (run 1) and `claude-haiku-5-5` (run 2) on 2026-11-06; 429 handling covered by fixture tests only | `provider/openai`, `provider/anthropic` fixture tests; `model_calls`; `GET /api/usage` |
-| EA | Example agent, end to end | Run live on 2026-11-06 with both providers, each with a real approved issue (#1, #2 in `Kaanistaken/vodafone-case-sandbox`); recorded run under `examples/` pending | `examples/dependency-check/`; runs 1 and 2 in `backend/data/app.db` |
+| EA | Example agent, end to end | Run live on 2026-11-06 with both providers, each with a real approved issue (#1, #2 in `Kaanistaken/vodafone-case-sandbox`); live rejection (run 5); quick path (runs 3–4) | `examples/dependency-check/`; recorded run `examples/dependency-check/recorded-run/` |
 
 ## Deliverables
 
@@ -181,10 +183,10 @@ options and their trade-offs → the author decides → the batch is sent to
 | --- | --- |
 | Git history | In progress |
 | `README.md` | Draft; setup time not yet measured (D114) |
-| `DESIGN.md` (≤ 2 pages) | Compiled from the decisions on 2026-11-06 (about 1,300 words; D130, D131 settled the unbacked lines); the two-page limit is still to be checked in print |
+| `DESIGN.md` (≤ 2 pages) | Compiled from the decisions on 2026-11-06 (D130–D132); two A4 pages when printed (11 pt, 2 cm margins) |
 | `AI_USAGE.md` | Started; updated as the work happens |
 | Tests (agent loop, tool templates, team permissions, approval flow) | Written and passing (`cd backend; go test ./...`) |
-| Recorded run under `examples/` | Run 1 exported on 2026-11-06 to `examples/dependency-check/recorded-run/` (`events.json`, `transcript.md`) through the API with a field allowlist; known-value (incl. base64/URL forms) and token-pattern scans clean; manual `git diff --cached` review before commit pending |
+| Recorded run under `examples/` | Run 1 exported on 2026-11-06 to `examples/dependency-check/recorded-run/` (`events.json`, `transcript.md`) through the API with a field allowlist; known-value (incl. base64/URL forms) and token-pattern scans clean; checked event by event against the database by Codex (review 5) |
 | Screen recording (≤ 5 min, includes approval) | Not started |
 
 ## Before delivery
@@ -195,97 +197,84 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-Stopped on 2026-11-05 (evening); work resumes on **2026-11-06 with the live
-validation** (author's decision). All planning batches are closed (D1–D127).
+Stopped on 2026-11-06 (evening) by the author; work resumes on **2026-11-07**.
+All planning batches are closed; decisions D1–D133.
 
-**State at the stop.** Everything is committed and pushed: `main` equals
-`origin/main` at `586c850`. The day went to the four pre-push code reviews
-(D117, D124–D127): the first review's findings F01–F18 are fixed (F19 deferred
-to `DESIGN.md` as a known limitation), then F17 (HTTP/2 re-send), N01 and N02
-from the follow-up reviews. Records: `docs/reviews/2026-11-05-*`,
-`AI_USAGE.md`.
+**State at the stop.** After the commit of D132/D133, everything is pushed
+and `main` equals `origin/main`. The last commit (the F01 fix of D132) was
+pushed **without** a Codex review, by the author's decision (D133). Code has
+not changed since `586c850`.
 
-**Verified:** `cd backend; go test ./... -count=3` passes; `go vet` and
-`gofmt` clean; `cd web; npm run build` passes. Every regression test of
-D124–D126 fails when its fix is undone (mutation checks).
+**Done on 2026-11-06** (details in the dated record below):
 
-**Live rejection verified on 2026-11-06** (run 5, agent "Dependency check",
-`gpt-6-luna`): the author rejected `create_github_issue` with the note "Not
-now, just give me the summary"; the call became `rejected`
-(`rejected_by_starter`), the model received "The user rejected this tool
-call; it was not executed. The user's note: …", made no further tool call
-and finished with a summary; run `succeeded`; no new issue on GitHub
-(still #1 and #2); 7 model calls, 67,474 input and 1,153 output tokens
-(D72, D89).
+- Author's inputs: keys in `.env`; public sandbox
+  <https://github.com/Kaanistaken/vodafone-case-sandbox>; fine-grained token
+  entered in the UI as alice's `GITHUB_TOKEN` (`api.github.com`).
+- Live validation (D122, D103, D110): model IDs listed by both providers;
+  run 1 OpenAI with approval (issue #1); run 2 Anthropic with approval
+  (issue #2); runs 3–4 read-only quick path; run 4 timed SSE through the
+  Next.js dev proxy (no buffering); run 5 live rejection (no issue). Spend
+  about USD 0.01 per provider (D118, D132).
+- `examples/dependency-check/recorded-run/` (run 1), `DESIGN.md` compiled
+  (two A4 pages; D130, D131), fifth code review (D132).
 
-**Not verified yet:** clean-clone setup time; a live 429.
-(Real provider calls and SSE in dev mode were verified on 2026-11-06, see
-step 3 below.)
+**Verified:** `cd backend; go test ./... -count=3` passes (2026-11-05, code
+unchanged since); live behaviour above.
 
-**Schedule (D112).** The code is ahead of plan; the live validation planned
-for Nov 5 (D122) moved to Nov 6. Remaining days: Nov 6 live validation and
-Anthropic run, Nov 7 fixes from the live runs, recorded run, `DESIGN.md`;
-Nov 8 clean-clone setup measurement, D95 limit review, README; Nov 9 final
-fixes and the author's screen recording.
+**Not verified yet:** clean-clone setup time (D114); a live 429 (fixture
+tests only).
 
-To resume on 2026-11-06:
+**Local state kept for the next session:** `backend/data/app.db` holds runs
+1–5, the example agents (ids 1–3) and alice's encrypted keys and
+`GITHUB_TOKEN`. The servers are stopped; start them as in `README.md`.
+
+**Schedule (D112), remaining:** Nov 7 D95 limit review (Before delivery),
+README check against the live runs, screen-recording outline (D104) and a
+rehearsal; Nov 8 clean-clone setup measurement (D114) and README timing
+claims; Nov 9 final fixes and the author's screen recording.
+
+To resume on 2026-11-07:
 
 1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
    `git status`, `git log origin/main..HEAD`.
-2. ~~Collect the author's inputs~~ — done on 2026-11-06: keys in `.env`;
-   public sandbox <https://github.com/Kaanistaken/vodafone-case-sandbox>
-   (`main`, root `package.json` checked unauthenticated through the API,
-   Issues enabled); fine-grained token created by the author, to be entered
-   in the UI as `GITHUB_TOKEN` for `api.github.com`; README `<owner>` filled.
-   Original list: an OpenAI key (in `.env` as
-   `DEV_OPENAI_API_KEY` for the agent's checks, or entered in the UI, D18);
-   the public repository `vodafone-case-sandbox` with
-   `examples/dependency-check/package.json` at its root, a fine-grained token
-   limited to it (Issues read/write), and the GitHub account name for the
-   README's `<owner>` (D107). An Anthropic key for the second provider run
-   (D103).
-3. Live validation (D122): ~~model IDs via the model-list endpoints (D78)~~ —
-   done on 2026-11-06: both `.env` keys return 200 from `GET /v1/models`;
-   `gpt-6-luna`, `gpt-6-sol`, `claude-haiku-5-5` and `claude-sonnet-5-5` are
-   all listed (no cost). **First live OpenAI run done on 2026-11-06**
-   (run 1, full agent "Dependency check", `gpt-6-luna`, alice): 7 model
-   turns, 6 tool calls (manifest, 4 × OSV, issue); the run stopped in
-   `waiting_approval`, the author approved, GitHub returned `201` and opened
-   <https://github.com/Kaanistaken/vodafone-case-sandbox/issues/1>; run
-   `succeeded` in 30 s. Usage recorded for every call: 68,331 input and 955
-   output tokens, no unknown usage; spend to be read from the OpenAI
-   dashboard (D122 (5)). This run covers D110 (1) and may serve as the
-   recorded run (D104); `backend/data/app.db` is kept for the export. The
-   read-only quick-path agent has not been run live yet. **Anthropic run
-   done on 2026-11-06** (run 2, agent "Dependency check (copy)", a UI clone
-   of agent 1 switched to `claude-haiku-5-5`; no code change, R1): same 6
-   tool calls, `waiting_approval` → approved → GitHub `201`,
-   <https://github.com/Kaanistaken/vodafone-case-sandbox/issues/2>;
-   `succeeded` in 29 s; 7 model calls, 109,837 input and 2,833 output
-   tokens, usage complete. Advisory IDs, severities and fixed versions in
-   the issue were checked against the stored OSV results (including the
-   `lodash.unset`/`lodash.omit` note from CVE-2025-13465): nothing invented.
-   Both providers are now verified live (R8, D103, D110 (1)). **Quick path
-   and SSE in dev mode done on 2026-11-06** with `npm run dev`: runs 3 and 4
-   of the read-only agent (`gpt-6-luna`), both `succeeded` (manifest + 4 × OSV,
-   no issue tool, table answer; about 51,100 input tokens each). Run 3 was
-   meant to time the stream but the timing script failed (no `bc` in Git
-   Bash), so run 4 repeated it with a Python client through the Next.js dev
-   proxy: events arrived spread over the run as they happened (tool calls at
-   about 1.0 / 2.2 / 3.7 / 5.1 / 6.5 s, `run_finished` at 10.9 s) and text
-   deltas every 250 ms (8.66 → 10.86 s), matching the backend flush interval
-   (D70): no buffering in dev mode (D110 (5)). Team total after runs 1–4:
-   26 model calls, 280,377 input and 5,349 output tokens, none unknown.
-   **Actual spend (author, from the provider dashboards, 2026-11-06): about
-   USD 0.01 on OpenAI and USD 0.01 on Anthropic** for model-ID checks and
-   runs 1–4 (D118). Original plan: one
-   OpenAI run of the read-only agent; then the full run with approval and a
-   real issue (D110); then the Anthropic run. Write actual spend here after
-   each live session (D118).
-4. Rest of the schedule: ~~SSE check in dev mode~~ (done, see 3); `DESIGN.md` (with F19 as a
-   known limitation); recorded run in `examples/`; D95 limit review;
-   clean-clone setup timing (D114).
-5. Every push needs a Codex code review first (D117).
+2. D95/D80 limit review: present the options (raise vs. configurable, and
+   values) to the author; the choice is theirs.
+3. README: compare the run instructions with what the live runs used
+   (clone + model change for Anthropic, quick path, `Settings` steps).
+4. Screen-recording outline under 5 minutes, including the approval step.
+5. Every push needs a Codex code review first (D117); D133 was a one-off.
+
+### Record of the live validation (2026-11-06)
+
+- Model IDs: both `.env` keys return 200 from `GET /v1/models`;
+  `gpt-6-luna`, `gpt-6-sol`, `claude-haiku-5-5` and `claude-sonnet-5-5` are
+  listed.
+- Run 1 (agent "Dependency check", `gpt-6-luna`, alice): 7 model turns, 6 tool
+  calls (manifest, 4 × OSV, issue); `waiting_approval`, approved by the
+  author, GitHub `201`,
+  <https://github.com/Kaanistaken/vodafone-case-sandbox/issues/1>;
+  `succeeded` in 30 s; 68,331 input and 955 output tokens, usage complete.
+  Exported as the recorded run (D104).
+- Run 2 (agent "Dependency check (copy)", a UI clone switched to
+  `claude-haiku-5-5`; no code change, R1): same 6 tool calls, approved, `201`,
+  <https://github.com/Kaanistaken/vodafone-case-sandbox/issues/2>;
+  `succeeded` in 29 s; 109,837 input and 2,833 output tokens. Advisory IDs,
+  severities and fixed versions checked against the stored OSV results:
+  nothing invented.
+- Runs 3 and 4 (read-only agent, `gpt-6-luna`, `npm run dev`): both
+  `succeeded`, manifest + 4 × OSV, table answer, about 51,100 input tokens
+  each. Run 3's timing script failed (no `bc` in Git Bash); run 4 repeated
+  it with a Python client: tool calls arrived at about 1.0 / 2.2 / 3.7 /
+  5.1 / 6.5 s, `run_finished` at 10.9 s, text deltas every 250 ms
+  (8.66 → 10.86 s), matching the flush interval (D70): no buffering in dev
+  mode (D110 (5)).
+- Run 5 (agent "Dependency check", `gpt-6-luna`): the author rejected
+  `create_github_issue` with the note "Not now, just give me the summary";
+  call `rejected` (`rejected_by_starter`); the model received the rejection
+  and the note, made no further tool call and finished with a summary; run
+  `succeeded`; no new issue; 67,474 input and 1,153 output tokens (D72, D89).
+- Spend (author, provider dashboards): about USD 0.01 on OpenAI and USD 0.01
+  on Anthropic for all of the above (D118, D132).
 
 Deadline 2026-11-09; budget cap USD 5 (top of this file). Keys go in the
 git-ignored `.env` (`DEV_OPENAI_API_KEY`, `DEV_ANTHROPIC_API_KEY`) for the
