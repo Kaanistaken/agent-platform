@@ -150,6 +150,7 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D134 | 2026-11-08 | The sandbox repository is renamed from `vodafone-case-sandbox` to **`test-sandbox`** (`https://github.com/Kaanistaken/test-sandbox`); renamed by Claude Code with `gh repo rename` at the author's request. Only the name changes: the manifest's `name` field stays `vodafone-case-sandbox`; tools are unchanged (owner and repo are parameters); `README.md` uses the new name because the old API path answers 301 and the tool client does not follow redirects (D81). Records of what happened before the rename (D101, D107, the 2026-11-06 record, `examples/dependency-check/recorded-run/`) keep the old name. | The author's choice. |
 | D135 | 2026-11-08 | Limit review before delivery (D95, D80): the output limit per model call is raised from 4096 to **16,384 tokens** (a fixed value, not configurable); the 128 KB tool-response limit to the model stays. Reason given by Claude Code: hitting the output limit fails the run (`incomplete_output`, D94), and OpenAI counts reasoning tokens inside it; the live runs used at most about 2,800 output tokens over 7 turns, and no tool response came near 128 KB. Anthropic's model endpoint lists 128,000 output tokens for both Claude models; the OpenAI limits could not be checked (see Next step). | The author accepted Claude Code's recommendation over making the limits configurable (D84). |
 | D136 | 2026-11-08 | Decision on the sixth code review (`docs/reviews/2026-11-08-code-6/`): fix both low findings — F01 (README's Anthropic steps omitted **Edit → Provider: anthropic**; a clone keeps provider `openai` and the model list follows the provider) and F02 (D134 cited D78 instead of D81 for the no-redirect rule). The fix is pushed **without** a Codex review, a one-off exception to D117 like D133. | The author's choice: two documentation corrections. |
+| D137 | 2026-11-08 | The trial screen recording made by Claude Code with Playwright (3 min 33 s, no audio, captions; run 8 with approval, backend restart and team isolation) is the delivered screen recording; the author does not record another. The file stays outside the repository (`vodafone-case-demo.webm` in the author's Videos folder) and is shared by the author. | The author watched it and accepted it. |
 
 ## Planning batches
 
@@ -190,7 +191,7 @@ options and their trade-offs → the author decides → the batch is sent to
 | `AI_USAGE.md` | Started; updated as the work happens |
 | Tests (agent loop, tool templates, team permissions, approval flow) | Written and passing (`cd backend; go test ./...`) |
 | Recorded run under `examples/` | Run 1 exported on 2026-11-06 to `examples/dependency-check/recorded-run/` (`events.json`, `transcript.md`) through the API with a field allowlist; known-value (incl. base64/URL forms) and token-pattern scans clean; checked event by event against the database by Codex (review 5) |
-| Screen recording (≤ 5 min, includes approval) | Not started |
+| Screen recording (≤ 5 min, includes approval) | Done on 2026-11-08 (D137): 3 min 33 s, recorded by Claude Code with Playwright, accepted by the author; outside the repository |
 
 ## Before delivery
 
@@ -198,7 +199,7 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-Session of 2026-11-08 (Nov 7 had no session). Decisions D1–D136.
+Session of 2026-11-08 (Nov 7 had no session). Decisions D1–D137.
 
 **Done on 2026-11-08:**
 
@@ -211,21 +212,42 @@ Session of 2026-11-08 (Nov 7 had no session). Decisions D1–D136.
   change, as in run 2), new limit value.
 
 **Verified on 2026-11-08:** `cd backend; go vet ./...; go test ./... -count=1`
-pass; `cd web; npm run build` passes. The 16,384 limit has not been tried in
-a live call.
+pass; `cd web; npm run build` passes; live runs 6–7 below.
 
-**Found on 2026-11-08:** the OpenAI key in `.env` is **expired**
-(`expired_secret_key` from `GET /v1/models`). If alice's key in the UI is the
-same key, OpenAI runs fail until the author enters a new key. The OpenAI
-output limits of `gpt-6-luna`/`gpt-6-sol` could not be checked for the same
-reason.
+**Found and resolved on 2026-11-08:** the author's OpenAI key had
+**expired** (`expired_secret_key` from `GET /v1/models`). The author put a
+new key in `.env` (both model IDs `200`) and then in the UI for alice.
+- Run 6 (read-only agent, alice, still the old key in the UI): `failed`,
+  `provider_error`, "OpenAI rejected the API key (HTTP 401): check the key
+  under Settings"; no key text in the message (R7); no model output, no cost.
+- Run 7 (same agent and task `Check the dependencies of
+  Kaanistaken/test-sandbox`, after the new key was entered): `succeeded` in
+  17 s; 6 model turns, 5 tool calls (manifest through the renamed repository,
+  4 × OSV), all `succeeded`; 51,077 input and 736 output tokens, usage
+  complete. OpenAI accepted the new limit (`max_output_tokens` 16,384, D135).
+
+**Trial screen recording (2026-11-08):** at the author's request Claude Code
+recorded a trial video with Playwright (browser only, no audio, English
+captions overlaid in the video only), 3 min 33 s; accepted by the author as
+the delivered recording (D137). The author authorised the approval in
+advance. Content: alice logs in; agents, tools (`requires_approval`,
+`{{secret.GITHUB_TOKEN}}`) and Settings; run 8 (agent "Dependency check",
+`gpt-6-luna`, task `Check the dependencies of Kaanistaken/test-sandbox`)
+pauses at `create_github_issue`; the backend is killed (`taskkill /F`) and
+started again; after a reload the approval is still pending; approved,
+GitHub `201`, <https://github.com/Kaanistaken/test-sandbox/issues/3>, run
+`succeeded` (7 turns, 68,469 input and 1,046 output tokens, usage complete);
+carol (team beta) sees no agents or runs of alpha, and `/agents/1` and
+`/runs/8` answer "not found" (API `404`). Passwords were typed from a local
+helper so they never entered the conversation. The video is not in the
+repository.
 
 **Remaining before delivery (2026-11-09):**
 
 1. ~~Codex code review (D117), then push~~: review 6 done (D136), pushed.
-2. Author: new OpenAI key (`.env` and UI); then one short live run to check
-   the new limit is accepted by OpenAI (optional, about USD 0.01).
-3. Author: screen recording, at most 5 minutes (D104). Outline:
+2. ~~Author: new OpenAI key; live check of the new limit~~: done (runs 6–7).
+3. ~~Screen recording~~: the trial recording was accepted (D137). The
+   outline it followed:
    (1) log in as alice, Settings: model key and `GITHUB_TOKEN` (values
    hidden); (2) Agents/Tools: the example defined as data, the
    `requires_approval` flag; (3) run **Dependency check** on

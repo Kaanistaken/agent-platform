@@ -108,7 +108,7 @@ tutmaz; hangisinin ne zaman yapılacağı kullanıcının kararıdır.
 | `AI_USAGE.md` | hangi AI araçları nerede kullanıldı; hangi önerileri reddettik veya düzelttik |
 | Testler | en az agent döngüsü, tool şablonları, takım yetkileri, onay akışı |
 | `examples/` | bir kayıtlı koşu: görev, akan olaylar, onay, nihai cevap |
-| Ekran kaydı | ≤5 dk, örnek agent platformda çalışırken, onay adımı dahil (kullanıcı çeker) |
+| Ekran kaydı | ≤5 dk, örnek agent platformda çalışırken, onay adımı dahil (Claude Code Playwright ile çekti, kullanıcı kabul etti; D137) |
 
 ## Kararlar: verilenler ve açık olanlar
 
