@@ -147,8 +147,9 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D131 | 2026-11-06 | `DESIGN.md` scaling section also lists, as changes at several thousand developers: the master key moves from `.env` to a KMS; SSO instead of seeded passwords, with per-team budgets and alerting on the usage records; a per-team host allowlist and review of shared tools. | The author's choice (proposed by Claude Code while compiling `DESIGN.md`). |
 | D132 | 2026-11-06 | Decision on the fifth code review (`docs/reviews/2026-11-06-code-5/`): fix F01 (medium: `DESIGN.md` said every side effect waits for approval; only tools marked `requires_approval` do). The low findings F02–F06 and the key-rotation wording suggestion are left as they are; the public OSV researcher attribution in the recorded run stays. Spend including run 5 is still about USD 0.01 per provider (author). | The author's choice: fix the overstatement, skip the low documentation findings. |
 | D133 | 2026-11-06 | The F01 fix of D132 (one sentence in `DESIGN.md` plus records) is pushed **without** a Codex review — a one-off exception to D117. | The author's choice: a one-line documentation fix at the end of the day. |
-| D134 | 2026-11-08 | The sandbox repository is renamed from `vodafone-case-sandbox` to **`test-sandbox`** (`https://github.com/Kaanistaken/test-sandbox`); renamed by Claude Code with `gh repo rename` at the author's request. Only the name changes: the manifest's `name` field stays `vodafone-case-sandbox`; tools are unchanged (owner and repo are parameters); `README.md` uses the new name because the old API path answers 301 and the tool client does not follow redirects (D78). Records of what happened before the rename (D101, D107, the 2026-11-06 record, `examples/dependency-check/recorded-run/`) keep the old name. | The author's choice. |
+| D134 | 2026-11-08 | The sandbox repository is renamed from `vodafone-case-sandbox` to **`test-sandbox`** (`https://github.com/Kaanistaken/test-sandbox`); renamed by Claude Code with `gh repo rename` at the author's request. Only the name changes: the manifest's `name` field stays `vodafone-case-sandbox`; tools are unchanged (owner and repo are parameters); `README.md` uses the new name because the old API path answers 301 and the tool client does not follow redirects (D81). Records of what happened before the rename (D101, D107, the 2026-11-06 record, `examples/dependency-check/recorded-run/`) keep the old name. | The author's choice. |
 | D135 | 2026-11-08 | Limit review before delivery (D95, D80): the output limit per model call is raised from 4096 to **16,384 tokens** (a fixed value, not configurable); the 128 KB tool-response limit to the model stays. Reason given by Claude Code: hitting the output limit fails the run (`incomplete_output`, D94), and OpenAI counts reasoning tokens inside it; the live runs used at most about 2,800 output tokens over 7 turns, and no tool response came near 128 KB. Anthropic's model endpoint lists 128,000 output tokens for both Claude models; the OpenAI limits could not be checked (see Next step). | The author accepted Claude Code's recommendation over making the limits configurable (D84). |
+| D136 | 2026-11-08 | Decision on the sixth code review (`docs/reviews/2026-11-08-code-6/`): fix both low findings — F01 (README's Anthropic steps omitted **Edit → Provider: anthropic**; a clone keeps provider `openai` and the model list follows the provider) and F02 (D134 cited D78 instead of D81 for the no-redirect rule). The fix is pushed **without** a Codex review, a one-off exception to D117 like D133. | The author's choice: two documentation corrections. |
 
 ## Planning batches
 
@@ -197,13 +198,14 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Next step
 
-Session of 2026-11-08 (Nov 7 had no session). Decisions D1–D135.
+Session of 2026-11-08 (Nov 7 had no session). Decisions D1–D136.
 
 **Done on 2026-11-08:**
 
 - Sandbox renamed to `Kaanistaken/test-sandbox` by Claude Code with
   `gh repo rename` (D134); README tasks use the new name.
 - Limit review (D135): output limit 4096 → 16,384 tokens; 128 KB kept.
+- Sixth code review (D136): two low documentation findings, fixed.
 - Cold setup measured (D114), record below.
 - README: setup time, how to run the example with Anthropic (clone + model
   change, as in run 2), new limit value.
@@ -220,7 +222,7 @@ reason.
 
 **Remaining before delivery (2026-11-09):**
 
-1. Codex code review of the unpushed commits (D117), then push.
+1. ~~Codex code review (D117), then push~~: review 6 done (D136), pushed.
 2. Author: new OpenAI key (`.env` and UI); then one short live run to check
    the new limit is accepted by OpenAI (optional, about USD 0.01).
 3. Author: screen recording, at most 5 minutes (D104). Outline:

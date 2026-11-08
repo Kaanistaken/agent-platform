@@ -76,9 +76,9 @@ a table. The approval step is not part of this agent.
 4. The run pauses at `create_github_issue`, showing the exact request without the secret. Approve it (or reject it
    with a note) and the run continues live.
 
-Both agents use `gpt-6-luna`. To run one with Anthropic, open it, press **Clone** and set the copy's model to
-`claude-haiku-5-5` (or `claude-sonnet-5-5`); the model is a setting, so no code changes. You need an Anthropic key
-under **Settings** for that.
+Both agents use `gpt-6-luna`. To run one with Anthropic, open it and press **Clone**; on the copy press **Edit**, set
+**Provider** to `anthropic` and **Model** to `claude-haiku-5-5` (or `claude-sonnet-5-5`), and save. The model is a
+setting, so no code changes. You need an Anthropic key under **Settings** for that.
 
 The sandbox manifest is [`examples/dependency-check/package.json`](examples/dependency-check/package.json):
 `lodash@4.17.15`, `minimist@1.2.0`, `jsonwebtoken@8.5.1` (known advisories) and `ms@2.0.0` (none).
