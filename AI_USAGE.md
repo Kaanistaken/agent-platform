@@ -50,6 +50,7 @@ added as the work happens.
 | 2026-11-06 | Claude Code | While compiling `DESIGN.md`, suggested dropping "a lead can delete a teammate's agent" from the security risks, as a deliberate power rather than a risk. | **Rejected by the author** (D130): all four residual risks stay, each presented as a risk inherent to an agent platform with the mitigations already in place. |
 | 2026-11-06 | Claude Code | First timing script for the dev-mode SSE check failed (no `bc` in Git Bash), so a live run (run 3) produced no timing. | **Corrected** by Claude Code: the check was repeated with a Python client (run 4); the extra run is recorded in `PLAN.md`. |
 | 2026-11-06 | Codex (code review 5) | Review of the live-validation records, recorded run and `DESIGN.md` (`docs/reviews/2026-11-06-code-5/`): no secret exposure; the export matches the database event for event; one medium finding (F01: `DESIGN.md`, written by Claude Code, said every side effect waits for approval, while only tools marked `requires_approval` do) and five low documentation findings. | **Partly accepted by the author** (D132): F01 fixed; F02–F06 and a wording suggestion left as they are. |
+| 2026-11-08 | Claude Code | Renamed the sandbox repository with the author's `gh` login at the author's request (D134), and measured the cold setup with a script (D114). While recording the rename in `PLAN.md`, a Python rewrite turned the file's line endings into CRLF. | **Corrected** by Claude Code before any commit (line endings restored to LF). |
 
 ## Notes on decisions
 
@@ -69,3 +70,4 @@ added as the work happens.
 | 2026-11-02 | Claude Code | When asked, recommended secret-free previews and records with response masking as a backup, instead of masking alone or withholding suspicious responses. | Chosen by the author (D33). |
 | 2026-11-02 | Claude Code | Proposed one option for each of the 17 B2b decision points raised by Codex (e.g. `tool_ids` on agents, composite team keys, `approval_revision`, the `409` confirmation flow for deleted tools). | All accepted by the author (D46–D57). |
 | 2026-11-06 | Claude Code | Proposed three scaling points for `DESIGN.md` not covered by a decision: master key in a KMS, SSO with per-team budgets and alerting, a per-team host allowlist with review of shared tools. | Accepted by the author (D131). |
+| 2026-11-08 | Claude Code | Recommended raising the per-call output limit to a fixed 16,384 tokens and keeping 128 KB, over configurable limits or no change. | Chosen by the author (D135). |

@@ -147,6 +147,8 @@ status and next steps; `DESIGN.md` is compiled from it.
 | D131 | 2026-11-06 | `DESIGN.md` scaling section also lists, as changes at several thousand developers: the master key moves from `.env` to a KMS; SSO instead of seeded passwords, with per-team budgets and alerting on the usage records; a per-team host allowlist and review of shared tools. | The author's choice (proposed by Claude Code while compiling `DESIGN.md`). |
 | D132 | 2026-11-06 | Decision on the fifth code review (`docs/reviews/2026-11-06-code-5/`): fix F01 (medium: `DESIGN.md` said every side effect waits for approval; only tools marked `requires_approval` do). The low findings F02–F06 and the key-rotation wording suggestion are left as they are; the public OSV researcher attribution in the recorded run stays. Spend including run 5 is still about USD 0.01 per provider (author). | The author's choice: fix the overstatement, skip the low documentation findings. |
 | D133 | 2026-11-06 | The F01 fix of D132 (one sentence in `DESIGN.md` plus records) is pushed **without** a Codex review — a one-off exception to D117. | The author's choice: a one-line documentation fix at the end of the day. |
+| D134 | 2026-11-08 | The sandbox repository is renamed from `vodafone-case-sandbox` to **`test-sandbox`** (`https://github.com/Kaanistaken/test-sandbox`); renamed by Claude Code with `gh repo rename` at the author's request. Only the name changes: the manifest's `name` field stays `vodafone-case-sandbox`; tools are unchanged (owner and repo are parameters); `README.md` uses the new name because the old API path answers 301 and the tool client does not follow redirects (D78). Records of what happened before the rename (D101, D107, the 2026-11-06 record, `examples/dependency-check/recorded-run/`) keep the old name. | The author's choice. |
+| D135 | 2026-11-08 | Limit review before delivery (D95, D80): the output limit per model call is raised from 4096 to **16,384 tokens** (a fixed value, not configurable); the 128 KB tool-response limit to the model stays. Reason given by Claude Code: hitting the output limit fails the run (`incomplete_output`, D94), and OpenAI counts reasoning tokens inside it; the live runs used at most about 2,800 output tokens over 7 turns, and no tool response came near 128 KB. Anthropic's model endpoint lists 128,000 output tokens for both Claude models; the OpenAI limits could not be checked (see Next step). | The author accepted Claude Code's recommendation over making the limits configurable (D84). |
 
 ## Planning batches
 
@@ -175,14 +177,14 @@ options and their trade-offs → the author decides → the batch is sent to
 | R6 | Teams are isolated (server-enforced) | Implemented | handlers scope every query by the session's team; composite keys (D46); `TestTeamAndUsageAuthorization` |
 | R7 | Each user brings their own model key | Implemented | `crypto/`, `api/auth.go`; `crypto_test.go`, adapter tests (environment keys ignored) |
 | R8 | Provider-agnostic and metered | Implemented; verified live with `gpt-6-luna` (run 1) and `claude-haiku-5-5` (run 2) on 2026-11-06; 429 handling covered by fixture tests only | `provider/openai`, `provider/anthropic` fixture tests; `model_calls`; `GET /api/usage` |
-| EA | Example agent, end to end | Run live on 2026-11-06 with both providers, each with a real approved issue (#1, #2 in `Kaanistaken/vodafone-case-sandbox`); live rejection (run 5); quick path (runs 3–4) | `examples/dependency-check/`; recorded run `examples/dependency-check/recorded-run/` |
+| EA | Example agent, end to end | Run live on 2026-11-06 with both providers, each with a real approved issue (#1, #2 in the sandbox, then `vodafone-case-sandbox`, now `Kaanistaken/test-sandbox`, D134); live rejection (run 5); quick path (runs 3–4) | `examples/dependency-check/`; recorded run `examples/dependency-check/recorded-run/` |
 
 ## Deliverables
 
 | Deliverable | Status |
 | --- | --- |
 | Git history | In progress |
-| `README.md` | Draft; setup time not yet measured (D114) |
+| `README.md` | Setup time measured on 2026-11-08 (D114): about 2 minutes from a clean clone; Anthropic run instructions added |
 | `DESIGN.md` (≤ 2 pages) | Compiled from the decisions on 2026-11-06 (D130–D132); two A4 pages when printed (11 pt, 2 cm margins) |
 | `AI_USAGE.md` | Started; updated as the work happens |
 | Tests (agent loop, tool templates, team permissions, approval flow) | Written and passing (`cd backend; go test ./...`) |
@@ -191,58 +193,57 @@ options and their trade-offs → the author decides → the batch is sent to
 
 ## Before delivery
 
-- Review the budget-motivated limits (D95: 4096 output tokens per model call;
-  D80: 128 KB tool response to the model) and raise them or make them
-  configurable, so reviewers testing with their own keys are not constrained.
+- ~~Review the budget-motivated limits (D95, D80)~~: done on 2026-11-08 (D135).
 
 ## Next step
 
-Stopped on 2026-11-06 (evening) by the author; work resumes on **2026-11-07**.
-All planning batches are closed; decisions D1–D133.
+Session of 2026-11-08 (Nov 7 had no session). Decisions D1–D135.
 
-**State at the stop.** After the commit of D132/D133, everything is pushed
-and `main` equals `origin/main`. The last commit (the F01 fix of D132) was
-pushed **without** a Codex review, by the author's decision (D133). Code has
-not changed since `586c850`.
+**Done on 2026-11-08:**
 
-**Done on 2026-11-06** (details in the dated record below):
+- Sandbox renamed to `Kaanistaken/test-sandbox` by Claude Code with
+  `gh repo rename` (D134); README tasks use the new name.
+- Limit review (D135): output limit 4096 → 16,384 tokens; 128 KB kept.
+- Cold setup measured (D114), record below.
+- README: setup time, how to run the example with Anthropic (clone + model
+  change, as in run 2), new limit value.
 
-- Author's inputs: keys in `.env`; public sandbox
-  <https://github.com/Kaanistaken/vodafone-case-sandbox>; fine-grained token
-  entered in the UI as alice's `GITHUB_TOKEN` (`api.github.com`).
-- Live validation (D122, D103, D110): model IDs listed by both providers;
-  run 1 OpenAI with approval (issue #1); run 2 Anthropic with approval
-  (issue #2); runs 3–4 read-only quick path; run 4 timed SSE through the
-  Next.js dev proxy (no buffering); run 5 live rejection (no issue). Spend
-  about USD 0.01 per provider (D118, D132).
-- `examples/dependency-check/recorded-run/` (run 1), `DESIGN.md` compiled
-  (two A4 pages; D130, D131), fifth code review (D132).
+**Verified on 2026-11-08:** `cd backend; go vet ./...; go test ./... -count=1`
+pass; `cd web; npm run build` passes. The 16,384 limit has not been tried in
+a live call.
 
-**Verified:** `cd backend; go test ./... -count=3` passes (2026-11-05, code
-unchanged since); live behaviour above.
+**Found on 2026-11-08:** the OpenAI key in `.env` is **expired**
+(`expired_secret_key` from `GET /v1/models`). If alice's key in the UI is the
+same key, OpenAI runs fail until the author enters a new key. The OpenAI
+output limits of `gpt-6-luna`/`gpt-6-sol` could not be checked for the same
+reason.
 
-**Not verified yet:** clean-clone setup time (D114); a live 429 (fixture
-tests only).
+**Remaining before delivery (2026-11-09):**
 
-**Local state kept for the next session:** `backend/data/app.db` holds runs
-1–5, the example agents (ids 1–3) and alice's encrypted keys and
-`GITHUB_TOKEN`. The servers are stopped; start them as in `README.md`.
+1. Codex code review of the unpushed commits (D117), then push.
+2. Author: new OpenAI key (`.env` and UI); then one short live run to check
+   the new limit is accepted by OpenAI (optional, about USD 0.01).
+3. Author: screen recording, at most 5 minutes (D104). Outline:
+   (1) log in as alice, Settings: model key and `GITHUB_TOKEN` (values
+   hidden); (2) Agents/Tools: the example defined as data, the
+   `requires_approval` flag; (3) run **Dependency check** on
+   `Kaanistaken/test-sandbox`: live text and tool calls; (4) the pending
+   approval with the exact request, approve; the issue on GitHub;
+   (5) optionally restart the backend while an approval waits (R5);
+   (6) log in as carol: alpha's agents are not visible (R6); usage totals.
+4. Delivery: share the private repository with the reviewers (external
+   action, the author's).
 
-**Schedule (D112), remaining:** Nov 7 D95 limit review (Before delivery),
-README check against the live runs, screen-recording outline (D104) and a
-rehearsal; Nov 8 clean-clone setup measurement (D114) and README timing
-claims; Nov 9 final fixes and the author's screen recording.
+### Record of the cold-setup measurement (2026-11-08, D114)
 
-To resume on 2026-11-07:
-
-1. Read `AGENTS.md`, this file, `docs/schema.md` and `AI_USAGE.md`;
-   `git status`, `git log origin/main..HEAD`.
-2. D95/D80 limit review: present the options (raise vs. configurable, and
-   values) to the author; the choice is theirs.
-3. README: compare the run instructions with what the live runs used
-   (clone + model change for Anthropic, quick path, `Settings` steps).
-4. Screen-recording outline under 5 minutes, including the approval step.
-5. Every push needs a Codex code review first (D117); D133 was a one-off.
+Clean `git clone` of `origin/main` (`0143c4d`) into a temporary folder on
+Windows 11, with `GOMODCACHE`, `GOCACHE` and the npm cache pointed at empty
+folders; Go 1.26.4 and Node 24.18.0 already installed. Commands as in the
+README, run by a script: clone 2 s; `initenv` (incl. module download and
+build) done at 37 s; `go run ./cmd/server` answering at 76 s; `npm ci` done
+at 94 s; `npm run build` done at 101 s; `npm start` answering at 103 s; login
+as alice through the Next.js proxy `200`, `/api/me` `200`. Typing the
+commands and reading the README are not included.
 
 ### Record of the live validation (2026-11-06)
 

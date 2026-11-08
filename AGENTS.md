@@ -168,6 +168,9 @@ Asıl kayıt `PLAN.md` → "Kararlar" bölümüdür; burada yalnız özet durur.
   B5 incelemesi sonrası (D119–D122): bağımlılık, sürüm, port, komut ve klasör
   düzeni agent'ta; Codex inceleme maliyeti bütçeye girmez; kalan inceleme
   maddeleri agent'ın seçimiyle kapandı. Ayrıntı `PLAN.md`.
+- 2026-11-08 (D134–D135): sandbox repo `Kaanistaken/test-sandbox` olarak yeniden
+  adlandırıldı (eski kayıtlar eski adı korur); çağrı başına çıktı sınırı 16.384
+  tokena çıktı, 128 KB tool cevabı sınırı kaldı. Ayrıntı `PLAN.md`.
 - Teslim 2026-11-09, bütçe tavanı şimdilik 5 USD (yukarıda).
 
 **Açık (kullanıcı kararı bekliyor).** Parantez içindekiler PDF'teki kısıtlar veya

@@ -29,7 +29,7 @@ const (
 	ModelAttemptTimeout = 10 * time.Minute
 	MaxAttempts         = 4 // "3 retries" (D88)
 	MaxRetryAfter       = 60 * time.Second
-	MaxOutputTokens     = 4096
+	MaxOutputTokens     = 16384 // D95, raised before delivery (D135)
 	Workers             = 4
 	ExpirySweep         = time.Minute
 	textFlushInterval   = 250 * time.Millisecond // D70

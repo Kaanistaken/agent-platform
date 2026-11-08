@@ -42,7 +42,9 @@ npm start
 Open <http://localhost:3000>, log in (for example as `alice`) and add your model key under **Settings**. The backend
 listens on `127.0.0.1:8080`, the UI on port 3000. For development, `npm run dev` replaces the last two UI commands.
 
-The setup time has not been measured on a clean machine yet (planned before delivery).
+Setup time, measured on 2026-11-08 from a clean clone on Windows 11 with empty Go module and npm caches (Go 1.26.4
+and Node.js 24 already installed): about 2 minutes from `git clone` to logging in through the UI, most of it
+downloading Go modules and npm packages. Installing Go and Node.js is not included.
 
 ## The example agent: dependency check
 
@@ -59,7 +61,7 @@ go run ./cmd/example -user alice      # the platform must be running; reads alic
 This creates three tools (`read_repo_file`, `osv_query`, `create_github_issue`) and two agents:
 
 **Quick path: no GitHub token needed.** Run **Dependency check (read-only)** with a task such as
-`Check the dependencies of Kaanistaken/vodafone-case-sandbox`. It reads the public manifest, queries OSV and answers with
+`Check the dependencies of Kaanistaken/test-sandbox`. It reads the public manifest, queries OSV and answers with
 a table. The approval step is not part of this agent.
 
 **Full path: about 3 minutes of GitHub preparation (not yet timed).**
@@ -70,9 +72,13 @@ a table. The approval step is not part of this agent.
 2. In the platform, go to **Settings → Your tool secrets** and add `GITHUB_TOKEN` with allowed host `api.github.com`
    and the token as value. The secret is only ever sent to that host, only in runs you start.
 3. Run **Dependency check** with a task such as
-   `Check Kaanistaken/vodafone-case-sandbox and open the issue in <you>/<your-repo>`.
+   `Check Kaanistaken/test-sandbox and open the issue in <you>/<your-repo>`.
 4. The run pauses at `create_github_issue`, showing the exact request without the secret. Approve it (or reject it
    with a note) and the run continues live.
+
+Both agents use `gpt-6-luna`. To run one with Anthropic, open it, press **Clone** and set the copy's model to
+`claude-haiku-5-5` (or `claude-sonnet-5-5`); the model is a setting, so no code changes. You need an Anthropic key
+under **Settings** for that.
 
 The sandbox manifest is [`examples/dependency-check/package.json`](examples/dependency-check/package.json):
 `lodash@4.17.15`, `minimist@1.2.0`, `jsonwebtoken@8.5.1` (known advisories) and `ms@2.0.0` (none).
@@ -96,7 +102,7 @@ races, credential changes, expiry, interrupted writes).
   change them (others can clone). A run always uses the model key and tool secrets of the user who starts it.
 - Only the user who started a run can approve or reject its tool calls; the starter and the team lead can cancel it.
 - An approval waits 24 hours (until Monday if that falls on a weekend), then the run is cancelled.
-- A run allows at most 20 model turns; a model answer is limited to 4096 output tokens; at most 128 KB of a tool
+- A run allows at most 20 model turns; a model answer is limited to 16,384 output tokens; at most 128 KB of a tool
   response goes to the model.
 - Tools can only call `https` URLs on port 443 of public addresses; redirects are not followed; secrets can only be
   used in headers.

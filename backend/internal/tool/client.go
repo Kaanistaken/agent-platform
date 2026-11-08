@@ -20,7 +20,7 @@ import (
 	"unicode/utf8"
 )
 
-// Limits (D74, D80). The 128 KB model limit is reviewed before delivery (D95).
+// Limits (D74, D80). The 128 KB model limit was reviewed before delivery and kept (D135).
 const (
 	GetAttempts      = 2 // a GET is retried once (D91); other methods are sent at most once (D63)
 	CallTimeout      = 2 * time.Minute
